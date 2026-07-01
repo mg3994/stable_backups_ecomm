@@ -367,73 +367,84 @@ export class ProductRenderer {
     const titleEl = otherSec?.querySelector('.section-title');
     if (!otherSec || !otherList) return;
 
-    if (!s) {
-        return;
-    }
+    if (!s) return;
 
-    const svcs = SchemaExtractor.findAllServices(s);
+    // Find standalone services (hasOfferCatalog)
+    const catalog = SchemaExtractor.getArray(s.hasOfferCatalog || p.hasOfferCatalog);
+    const services: any[] = [];
+    catalog.forEach(cat => {
+        services.push(...SchemaExtractor.getArray(cat.itemListElement));
+    });
 
-    // Fallback: search in p as well
-    if (p !== s) {
-        const pSvcs = SchemaExtractor.findAllServices(p);
-        pSvcs.forEach(ps => {
-            if (!svcs.find(s => (s.itemOffered?.name || s.name) === (ps.itemOffered?.name || ps.name))) {
-                svcs.push(ps);
-            }
-        });
-    }
+    // Find addons (addOn)
+    const addOns = SchemaExtractor.getArray(p.addOn || s.addOn);
 
-    if (svcs.length > 0) {
+    this.renderAddOns(addOns, s, p);
+
+    if (services.length > 0) {
       otherSec.style.display = "block";
-
       if (titleEl) {
           const isBusiness = p["@type"] === "LocalBusiness" || p["@type"] === "Store" || p["@type"] === "Organization";
           titleEl.textContent = isBusiness ? "Deals In / Our Services" : "Optional Product-Related Services";
       }
 
-      otherList.innerHTML = svcs.map((ser: any) => {
+      otherList.innerHTML = services.map((ser: any) => {
         const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
         const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
         const { price, currency } = SchemaExtractor.extractPrice(ser);
         const url = SchemaExtractor.getFirst(p.url) || window.location.href.split('?')[0].split('#')[0];
-        const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
-        const bookingReq = SchemaExtractor.extractAdvanceBookingRequirement(ser);
-
-        const itemWithUrl = {
-            ...rawItem,
-            name: n,
-            "@type": rawItem["@type"] || ser["@type"] || "Service",
-            url,
-            offers: {
-                "@type": "Offer",
-                price,
-                priceCurrency: currency,
-                availability: SchemaExtractor.extractAvailability(ser),
-                eligibleQuantity: {
-                    "@type": "QuantitativeValue",
-                    minValue,
-                    maxValue
-                }
-            }
-        };
-
-        let constraintText = '';
-        if (minValue !== null || maxValue !== null) {
-            if (minValue !== null && maxValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Min: ${minValue}, Max: ${maxValue}</div>`;
-            else if (minValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Min: ${minValue}</div>`;
-            else if (maxValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Max: ${maxValue}</div>`;
-        }
-
-        const bookingText = bookingReq ? `<div style="font-size:0.7rem; color:var(--accent); font-weight:700; margin-bottom:8px;">Booking: ${bookingReq}</div>` : '';
-
+        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser) } };
         const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
         const sellerJson = JSON.stringify(s).replace(/"/g, '&quot;');
-        let btnH = `<button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button>`;
-
-        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div>${constraintText}${bookingText}${btnH}</div>`;
+        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
       }).join('');
     } else {
       otherSec.style.display = "none";
     }
+  }
+
+  private renderAddOns(addOns: any[], s: Organization | any, p: any): void {
+      let addonSec = UIManager.el("addon-services");
+      if (!addonSec) {
+          addonSec = document.createElement('div');
+          addonSec.id = "addon-services";
+          addonSec.className = "details-card";
+          addonSec.style.marginTop = "20px";
+          addonSec.innerHTML = `<h2 class="section-title">Addons</h2><div id="addon-services-list" class="h-list"></div>`;
+          UIManager.el("other-services")?.before(addonSec);
+      }
+
+      const list = UIManager.el("addon-services-list");
+      if (!list) return;
+
+      if (addOns.length === 0) {
+          addonSec.style.display = "none";
+          return;
+      }
+
+      addonSec.style.display = "block";
+      const cartManager = (window as any).CartManager;
+      const currentUrl = window.location.href.split('?')[0].split('#')[0];
+      const parentKey = cartManager.generateItemKey({ ...p, url: currentUrl }, (window as any).AntinnaEngine.state.selectedVariants);
+      const isParentInCart = cartManager.getOrder().orderedItem.some((oi: any) => oi.itemKey === parentKey);
+
+      list.innerHTML = addOns.map((ser: any) => {
+          const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
+          const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
+          const { price, currency } = SchemaExtractor.extractPrice(ser);
+          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser) } };
+          const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
+
+          return `
+            <div class="h-card" style="opacity: ${isParentInCart ? '1' : '0.5'}">
+                <div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div>
+                <div class="price" style="font-size:1.2rem;margin-bottom:15px;">${currency} ${price}</div>
+                <button class="v-btn ${isParentInCart ? 'active' : ''}" style="width:100%;padding:10px;font-size:0.85rem;"
+                    ${isParentInCart ? '' : 'disabled'}
+                    onclick="CartManager.addAddOn('${parentKey}', ${itemJson}); CartRenderer.updateUI(); showToast('Addon Added', 'success');">
+                    ${isParentInCart ? 'Add Addon' : 'Add Base Product First'}
+                </button>
+            </div>`;
+      }).join('');
   }
 }
