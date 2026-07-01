@@ -393,7 +393,8 @@ export class ProductRenderer {
         const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
         const { price, currency } = SchemaExtractor.extractPrice(ser);
         const url = SchemaExtractor.getFirst(p.url) || window.location.href.split('?')[0].split('#')[0];
-        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser) } };
+        const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
+        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined } };
         const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
         const sellerJson = JSON.stringify(s).replace(/"/g, '&quot;');
         return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
@@ -432,7 +433,8 @@ export class ProductRenderer {
           const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
           const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
           const { price, currency } = SchemaExtractor.extractPrice(ser);
-          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser) } };
+          const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
+          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined } };
           const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
 
           return `

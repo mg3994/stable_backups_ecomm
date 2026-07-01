@@ -241,13 +241,18 @@ export class CartManager {
 
     item.orderQuantity = newQty;
 
-    // Automatically increase/decrease addons and enforce dynamic limits
+    // Proportional scaling of addons when parent quantity changes
     if (item.addOns) {
-      item.addOns.forEach((addon: any) => {
-        if (delta > 0) {
-          addon.orderQuantity = (addon.orderQuantity || 0) + delta;
-        }
+      const oldParentQty = oldQty || 1;
+      const newParentQty = newQty;
 
+      item.addOns.forEach((addon: any) => {
+        // Calculate ratio of current addon qty to old parent qty
+        const ratio = (addon.orderQuantity || 0) / oldParentQty;
+        // New qty should maintain the same ratio
+        addon.orderQuantity = Math.round(ratio * newParentQty);
+
+        // Enforce dynamic limits based on new parent quantity
         const limits = this.getAddOnLimits(item, addon);
         if (limits.maxValue !== null && addon.orderQuantity > limits.maxValue) {
           addon.orderQuantity = limits.maxValue;
