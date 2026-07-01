@@ -95,6 +95,10 @@ export class CartRenderer {
       // Render Addons
       const addOnsHtml = SchemaExtractor.getArray(item.addOns).map((addon: any, aIdx: number) => {
           const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
+          const aLimits = this.cartManager.getAddOnLimits(item, addon);
+          const canDecrease = (aLimits.minValue === null) ? addon.orderQuantity > 1 : addon.orderQuantity > aLimits.minValue;
+          const canIncrease = (aLimits.maxValue === null) || addon.orderQuantity < aLimits.maxValue;
+
           return `
             <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px dashed rgba(0,0,0,0.05); margin-top:10px; font-size:0.8rem;">
                <div style="flex:1; opacity:0.8;">
@@ -102,9 +106,9 @@ export class CartRenderer {
                   <div style="color:var(--accent); font-weight:700;">${aCurrency} ${aPrice}</div>
                </div>
                <div style="display:flex; align-items:center; gap:8px;">
-                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" onclick="CartManager.updateAddOnQty(${idx},${aIdx},-1); CartRenderer.showModal();">-</button>
-                  <span>${addon.orderQuantity}</span>
-                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" onclick="CartManager.updateAddOnQty(${idx},${aIdx},1); CartRenderer.showModal();">+</button>
+                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" ${!canDecrease ? 'disabled' : ''} onclick="CartManager.updateAddOnQty(${idx},${aIdx},-1); CartRenderer.showModal();">-</button>
+                  <span style="font-weight:600;">${addon.orderQuantity}</span>
+                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" ${!canIncrease ? 'disabled' : ''} onclick="CartManager.updateAddOnQty(${idx},${aIdx},1); CartRenderer.showModal();">+</button>
                </div>
                <button onclick="CartManager.removeAddOn(${idx},${aIdx}); CartRenderer.showModal();" style="background:none;border:none;color:#ff3b30;cursor:pointer;font-size:1rem; padding:5px;">×</button>
             </div>
