@@ -125,13 +125,16 @@ export class ProductRenderer {
 
   private renderQuantityConstraints(offer: Offer): void {
       const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(offer);
+      const inventoryLevel = SchemaExtractor.extractInventoryLevel(offer);
+      const effectiveMax = (maxValue !== null && inventoryLevel !== null) ? Math.min(maxValue, inventoryLevel) : (maxValue || inventoryLevel);
+
       const container = UIManager.query('.qty-controls');
       if (!container) return;
 
       const existingHint = UIManager.el('qty-constraints-hint');
       if (existingHint) existingHint.remove();
 
-      if (minValue !== null || maxValue !== null) {
+      if (minValue !== null || effectiveMax !== null) {
           const hint = document.createElement('div');
           hint.id = 'qty-constraints-hint';
           hint.style.fontSize = '0.75rem';
@@ -140,16 +143,26 @@ export class ProductRenderer {
           hint.style.fontWeight = '600';
 
           let text = '';
-          if (minValue !== null && maxValue !== null) text = `Min: ${minValue}, Max: ${maxValue}`;
+          if (minValue !== null && effectiveMax !== null) {
+              text = `Min: ${minValue}, Max: ${effectiveMax}`;
+              if (inventoryLevel !== null && inventoryLevel < (maxValue || Infinity)) {
+                  text += ' (Limited Stock)';
+              }
+          }
           else if (minValue !== null) text = `Minimum order: ${minValue}`;
-          else if (maxValue !== null) text = `Maximum order: ${maxValue}`;
+          else if (effectiveMax !== null) {
+              text = `Maximum order: ${effectiveMax}`;
+              if (inventoryLevel !== null && inventoryLevel < (maxValue || Infinity)) {
+                  text += ' (Limited Stock)';
+              }
+          }
 
           hint.textContent = text;
           container.after(hint);
       }
 
       // Update actual buttons via App state (handled in main.ts)
-      (window as any).currentQuantityLimits = { minValue, maxValue };
+      (window as any).currentQuantityLimits = { minValue, maxValue: effectiveMax };
       this.updateQtyButtons();
   }
 
@@ -394,7 +407,8 @@ export class ProductRenderer {
         const { price, currency } = SchemaExtractor.extractPrice(ser);
         const url = SchemaExtractor.getFirst(p.url) || window.location.href.split('?')[0].split('#')[0];
         const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
-        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined } };
+        const inventoryLevel = SchemaExtractor.extractInventoryLevel(ser.offers || ser);
+        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
         const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
         const sellerJson = JSON.stringify(s).replace(/"/g, '&quot;');
         return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
@@ -434,7 +448,8 @@ export class ProductRenderer {
           const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
           const { price, currency } = SchemaExtractor.extractPrice(ser);
           const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
-          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined } };
+          const inventoryLevel = SchemaExtractor.extractInventoryLevel(ser.offers || ser);
+          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
           const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
 
           return `
