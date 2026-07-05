@@ -388,6 +388,51 @@ export class CartManager {
           item.orderedItem.image = matchedItem.image || item.orderedItem.image;
           item.orderedItem.name = matchedItem.name || item.orderedItem.name;
           item.orderedItem.description = matchedItem.description || item.orderedItem.description;
+
+          // Update AddOns
+          if (item.addOns) {
+              item.addOns.forEach((addon: any) => {
+                  let addonMatch = null;
+                  const normalizedAddonName = SchemaExtractor.normalizeName(addon.orderedItem.name);
+
+                  for (const source of dataSources) {
+                      const allServices = SchemaExtractor.findAllServices(source);
+                      for (const serviceOffer of allServices) {
+                          const sItem = serviceOffer.itemOffered || serviceOffer;
+                          const sName = SchemaExtractor.getFirst(sItem.name) || SchemaExtractor.getFirst(serviceOffer.name);
+                          if (SchemaExtractor.normalizeName(sName as string) === normalizedAddonName) {
+                              addonMatch = serviceOffer;
+                              break;
+                          }
+                      }
+                      if (addonMatch) break;
+                  }
+
+                  if (addonMatch) {
+                      const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addonMatch);
+                      const aAvailability = SchemaExtractor.extractAvailability(addonMatch);
+                      const { minValue: aMin, maxValue: aMax } = SchemaExtractor.extractEligibleQuantity(addonMatch);
+                      const aInv = SchemaExtractor.extractInventoryLevel(addonMatch.offers || addonMatch);
+
+                      addon._constraints = { minValue: aMin, maxValue: aMax, inventoryLevel: aInv };
+                      addon.orderedItem.offers = {
+                          "@type": "Offer",
+                          price: aPrice,
+                          priceCurrency: aCurrency,
+                          availability: aAvailability,
+                          eligibleQuantity: (aMin !== null || aMax !== null) ? {
+                              "@type": "QuantitativeValue",
+                              minValue: aMin,
+                              maxValue: aMax
+                          } : undefined,
+                          inventoryLevel: aInv !== null ? {
+                              "@type": "QuantitativeValue",
+                              value: aInv
+                          } : undefined
+                      };
+                  }
+              });
+          }
       } else {
           item.isUnavailable = true;
       }
