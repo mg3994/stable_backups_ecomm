@@ -175,6 +175,22 @@ export class SchemaExtractor {
       };
   }
 
+  static extractInventoryLevel(data: any): number | null {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return null;
+
+      const il = this.getFirst(obj.inventoryLevel) ||
+                 this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.inventoryLevel) ||
+                 this.getFirst(this.getArray(obj.itemOffered)[0]?.inventoryLevel) ||
+                 this.getFirst(this.getArray(obj.offers)[0]?.inventoryLevel) ||
+                 this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.inventoryLevel);
+
+      if (!il) return null;
+
+      const val = typeof il === 'object' ? this.getFirst(il.value) : il;
+      return (val !== undefined && val !== null) ? Number(val) : null;
+  }
+
   static extractAdvanceBookingRequirement(offer: any): string | null {
       const off = Array.isArray(offer) ? offer[0] : offer;
       if (!off) return null;

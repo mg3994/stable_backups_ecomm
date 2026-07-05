@@ -92,21 +92,49 @@ export class CartRenderer {
       const { price, currency } = SchemaExtractor.extractPrice(item.orderedItem?.offers);
       const bookingReq = SchemaExtractor.extractAdvanceBookingRequirement(item.orderedItem?.offers);
 
+      // Render Addons
+      const addOnsHtml = SchemaExtractor.getArray(item.addOns).map((addon: any, aIdx: number) => {
+          const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
+          const aLimits = this.cartManager.getAddOnLimits(item, addon);
+          const canDecrease = (aLimits.minValue === null) ? addon.orderQuantity > 1 : addon.orderQuantity > aLimits.minValue;
+          const canIncrease = (aLimits.maxValue === null) || addon.orderQuantity < aLimits.maxValue;
+
+          return `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px dashed rgba(0,0,0,0.05); margin-top:10px; font-size:0.8rem;">
+               <div style="flex:1; opacity:0.8;">
+                  <div style="font-weight:600;">+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)}</div>
+                  <div style="color:var(--accent); font-weight:700;">${aCurrency} ${aPrice}</div>
+               </div>
+               <div style="display:flex; align-items:center; gap:8px;">
+                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" ${!canDecrease ? 'disabled' : ''} onclick="CartManager.updateAddOnQty(${idx},${aIdx},-1); CartRenderer.showModal();">-</button>
+                  <span style="font-weight:600;">${addon.orderQuantity}</span>
+                  <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" ${!canIncrease ? 'disabled' : ''} onclick="CartManager.updateAddOnQty(${idx},${aIdx},1); CartRenderer.showModal();">+</button>
+               </div>
+               <button onclick="CartManager.removeAddOn(${idx},${aIdx}); CartRenderer.showModal();" style="background:none;border:none;color:#ff3b30;cursor:pointer;font-size:1rem; padding:5px;">×</button>
+            </div>
+          `;
+      }).join('');
+
       return `
-        <div style="display:flex; gap:15px; padding:15px; border-bottom:1px solid rgba(0,0,0,0.05); align-items:center; opacity:${opacity};">
-           <img src="${this.getItemImage(item.orderedItem)}" style="width:60px; height:60px; border-radius:10px; object-fit:cover;"/>
-           <div style="flex:1;">
-              <div style="font-weight:700;font-size:0.9rem;">${SchemaExtractor.getFirst(item.orderedItem?.name)}</div>
-              ${statusText}
-              ${bookingReq ? `<div style="color:var(--accent); font-size:0.7rem; font-weight:700;">Booking: ${bookingReq}</div>` : ''}
-              <div style="color:var(--accent); font-weight:800; font-size:0.85rem; margin-top:4px;">${currency} ${price}</div>
-              <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
-                 <button class="qty-btn" style="width:24px; height:24px; font-size:0.8rem;" ${!isOrderable ? 'disabled' : ''} onclick="CartManager.updateQty(${idx},-1); CartRenderer.showModal();">-</button>
-                 <span style="font-weight:800;">${item.orderQuantity || 1}</span>
-                 <button class="qty-btn" style="width:24px; height:24px; font-size:0.8rem;" ${(!isOrderable || (item._constraints?.maxValue !== null && (item.orderQuantity || 1) >= item._constraints.maxValue)) ? 'disabled' : ''} onclick="CartManager.updateQty(${idx},1); CartRenderer.showModal();">+</button>
-              </div>
-           </div>
-           <button onclick="CartManager.removeItem(${idx}); CartRenderer.showModal();" style="background:none;border:none;color:#ff3b30;cursor:pointer;font-size:1.2rem; padding:10px;">×</button>
+        <div style="padding:15px; border-bottom:1px solid rgba(0,0,0,0.05); opacity:${opacity};">
+          <div style="display:flex; gap:15px; align-items:center;">
+             <img src="${this.getItemImage(item.orderedItem)}" style="width:60px; height:60px; border-radius:10px; object-fit:cover;"/>
+             <div style="flex:1;">
+                <div style="font-weight:700;font-size:0.9rem;">${SchemaExtractor.getFirst(item.orderedItem?.name)}</div>
+                ${statusText}
+                ${bookingReq ? `<div style="color:var(--accent); font-size:0.7rem; font-weight:700;">Booking: ${bookingReq}</div>` : ''}
+                <div style="color:var(--accent); font-weight:800; font-size:0.85rem; margin-top:4px;">${currency} ${price}</div>
+                <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
+                   <button class="qty-btn" style="width:24px; height:24px; font-size:0.8rem;" ${!isOrderable ? 'disabled' : ''} onclick="CartManager.updateQty(${idx},-1); CartRenderer.showModal();">-</button>
+                   <span style="font-weight:800;">${item.orderQuantity || 1}</span>
+                   <button class="qty-btn" style="width:24px; height:24px; font-size:0.8rem;" ${(!isOrderable || (item._constraints?.maxValue !== null && (item.orderQuantity || 1) >= item._constraints.maxValue)) ? 'disabled' : ''} onclick="CartManager.updateQty(${idx},1); CartRenderer.showModal();">+</button>
+                </div>
+             </div>
+             <button onclick="CartManager.removeItem(${idx}); CartRenderer.showModal();" style="background:none;border:none;color:#ff3b30;cursor:pointer;font-size:1.2rem; padding:10px;">×</button>
+          </div>
+          <div style="margin-left: 75px;">
+            ${addOnsHtml}
+          </div>
         </div>
       `;
     }).join("") || '<div style="text-align:center; padding:50px; opacity:0.5; font-weight:700;">Bag is empty</div>';

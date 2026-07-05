@@ -55,7 +55,16 @@ export class CartManager {
     this.order.totalPrice = orderedItems.reduce((sum: number, item: any) => {
       if (!this.isItemOrderable(item)) return sum;
       const { price } = SchemaExtractor.extractPrice(item.orderedItem.offers);
-      return sum + (parseFloat(price) * (item.orderQuantity || 1));
+      let itemTotal = parseFloat(price) * (item.orderQuantity || 1);
+
+      // Add price of addons
+      const addOns = SchemaExtractor.getArray(item.addOns);
+      addOns.forEach((addon: any) => {
+        const { price: addonPrice } = SchemaExtractor.extractPrice(addon.orderedItem.offers);
+        itemTotal += parseFloat(addonPrice) * (addon.orderQuantity || 0);
+      });
+
+      return sum + itemTotal;
     }, 0);
   }
 
@@ -78,10 +87,10 @@ export class CartManager {
       return items.every(item => this.isItemOrderable(item) && this.isItemQuantityValid(item));
   }
 
-  addItem(item: Product | Service, seller?: Organization, selectedVariants?: Record<string, string>, quantity: number = 1): void {
+  addItem(item: Product | Service, seller?: Organization, selectedVariants?: Record<string, string>, quantity: number = 1): string | null {
     const availability = SchemaExtractor.extractAvailability(item.offers);
     if (availability === "https://schema.org/OutOfStock") {
-        return;
+        return null;
     }
 
     if (!SchemaExtractor.getFirst(item.url)) {
@@ -96,24 +105,29 @@ export class CartManager {
     );
 
     const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(item);
+    const inventoryLevel = SchemaExtractor.extractInventoryLevel(item.offers || item);
+    const effectiveMax = (maxValue !== null && inventoryLevel !== null) ? Math.min(maxValue, inventoryLevel) : (maxValue || inventoryLevel);
+
     const initialQty = Math.max(Number(quantity), minValue || 1);
 
     if (existing) {
       const currentQty = Number((existing as any).orderQuantity || 0);
       const newQty = currentQty + Number(quantity);
 
-      if (maxValue !== null && newQty > maxValue) {
+      if (effectiveMax !== null && newQty > effectiveMax) {
           const UIManager = (window as any).UIManager;
-          if (UIManager) UIManager.showToast(`Maximum limit of ${maxValue} reached for this item`, "error");
-          (existing as any).orderQuantity = maxValue;
+          if (UIManager) UIManager.showToast(`Maximum limit of ${effectiveMax} reached for this item`, "error");
+          (existing as any).orderQuantity = effectiveMax;
       } else {
           (existing as any).orderQuantity = newQty;
       }
+      this.saveToStorage();
+      return itemKey;
     } else {
       const itemCopy = JSON.parse(JSON.stringify(item));
 
       // Ensure quantity doesn't exceed max on first add
-      const finalInitialQty = maxValue !== null ? Math.min(initialQty, maxValue) : initialQty;
+      const finalInitialQty = effectiveMax !== null ? Math.min(initialQty, effectiveMax) : initialQty;
 
       orderedItems.push({
         "@type": "OrderItem",
@@ -125,14 +139,77 @@ export class CartManager {
         orderQuantity: finalInitialQty,
         seller: seller ? JSON.parse(JSON.stringify(seller)) : undefined,
         itemKey: itemKey,
-        _constraints: { minValue, maxValue }
+        _constraints: { minValue, maxValue, inventoryLevel },
+        addOns: []
       } as any);
       this.order.orderedItem = orderedItems;
+      this.saveToStorage();
+      return itemKey;
+    }
+  }
+
+  addAddOn(parentItemKey: string, addon: Product | Service, quantity: number = 1): void {
+    const orderedItems = SchemaExtractor.getArray(this.order.orderedItem);
+    const parent = orderedItems.find((oi: any) => oi.itemKey === parentItemKey);
+
+    if (!parent) {
+      const UIManager = (window as any).UIManager;
+      if (UIManager) UIManager.showToast("Please add the main product first", "error");
+      return;
+    }
+
+    if (!parent.addOns) parent.addOns = [];
+
+    const addonKey = this.generateItemKey(addon);
+    const existing = parent.addOns.find((a: any) => a.itemKey === addonKey);
+
+    if (existing) {
+      const limits = this.getAddOnLimits(parent, existing);
+      const newQty = (existing.orderQuantity || 0) + quantity;
+      if (limits.maxValue !== null && newQty > limits.maxValue) {
+        existing.orderQuantity = limits.maxValue;
+      } else {
+        existing.orderQuantity = newQty;
+      }
+    } else {
+      const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(addon);
+      const inventoryLevel = SchemaExtractor.extractInventoryLevel(addon.offers || addon);
+      const tempAddon = {
+        orderedItem: JSON.parse(JSON.stringify(addon)),
+        _constraints: { minValue, maxValue, inventoryLevel }
+      };
+      const dynamicLimits = this.getAddOnLimits(parent, tempAddon);
+
+      parent.addOns.push({
+        orderedItem: tempAddon.orderedItem,
+        orderQuantity: Math.max(quantity, dynamicLimits.minValue || 1),
+        itemKey: addonKey,
+        _constraints: { minValue, maxValue, inventoryLevel }
+      });
     }
     this.saveToStorage();
   }
 
-  private generateItemKey(item: Product | Service | any, variants?: Record<string, string>): string {
+  public getAddOnLimits(parent: any, addon: any): { minValue: number | null, maxValue: number | null } {
+    const parentQty = parent.orderQuantity || 1;
+    const min = addon._constraints?.minValue;
+    const max = addon._constraints?.maxValue;
+    const inventoryLevel = addon._constraints?.inventoryLevel;
+
+    const scaledMax = (max !== undefined && max !== null) ? max * parentQty : null;
+
+    // Inventory level is global, not per-parent-unit.
+    // However, if the user bought 2 base products, and max gift wraps per product is 3, but inventory is 5,
+    // then effective max is 5.
+    const effectiveMax = (scaledMax !== null && inventoryLevel !== null) ? Math.min(scaledMax, inventoryLevel) : (scaledMax || inventoryLevel);
+
+    return {
+      minValue: (min !== undefined && min !== null) ? min * parentQty : null,
+      maxValue: effectiveMax
+    };
+  }
+
+  public generateItemKey(item: Product | Service | any, variants?: Record<string, string>): string {
     let url = SchemaExtractor.getFirst(item.url) || '';
     if (url.includes('?')) url = url.split('?')[0];
     if (url.includes('#')) url = url.split('#')[0];
@@ -164,21 +241,85 @@ export class CartManager {
     const item = orderedItems[index] as any;
     if (!item) return;
 
-    const newQty = (item.orderQuantity || 0) + delta;
-    const max = item._constraints?.maxValue;
+    const oldQty = item.orderQuantity || 0;
+    const newQty = oldQty + delta;
+    const { maxValue, inventoryLevel } = item._constraints || {};
+    const effectiveMax = (maxValue !== null && inventoryLevel !== null) ? Math.min(maxValue, inventoryLevel) : (maxValue || inventoryLevel);
 
-    if (delta > 0 && max !== null && max !== undefined && newQty > max) {
+    if (delta > 0 && effectiveMax !== null && effectiveMax !== undefined && newQty > effectiveMax) {
         const UIManager = (window as any).UIManager;
-        if (UIManager) UIManager.showToast(`Maximum limit of ${max} reached`, "error");
+      if (UIManager) UIManager.showToast(`Maximum limit of ${effectiveMax} reached`, "error");
         return;
     }
 
     item.orderQuantity = newQty;
+
+    // Proportional scaling of addons when parent quantity changes
+    if (item.addOns) {
+      const oldParentQty = oldQty || 1;
+      const newParentQty = newQty;
+
+      item.addOns.forEach((addon: any) => {
+        // Calculate ratio of current addon qty to old parent qty
+        const ratio = (addon.orderQuantity || 0) / oldParentQty;
+        // New qty should maintain the same ratio
+        addon.orderQuantity = Math.round(ratio * newParentQty);
+
+        // Enforce dynamic limits based on new parent quantity
+        const limits = this.getAddOnLimits(item, addon);
+        if (limits.maxValue !== null && addon.orderQuantity > limits.maxValue) {
+          addon.orderQuantity = limits.maxValue;
+        }
+        if (limits.minValue !== null && addon.orderQuantity < limits.minValue) {
+          addon.orderQuantity = limits.minValue;
+        }
+      });
+    }
+
     if (item.orderQuantity <= 0) {
       this.removeItem(index);
     } else {
       this.saveToStorage();
     }
+  }
+
+  updateAddOnQty(parentIndex: number, addonIndex: number, delta: number): void {
+    const orderedItems = SchemaExtractor.getArray(this.order.orderedItem);
+    const parent = orderedItems[parentIndex] as any;
+    if (!parent || !parent.addOns) return;
+
+    const addon = parent.addOns[addonIndex];
+    if (!addon) return;
+
+    const newQty = (addon.orderQuantity || 0) + delta;
+    const limits = this.getAddOnLimits(parent, addon);
+
+    if (delta > 0 && limits.maxValue !== null && newQty > limits.maxValue) {
+      const UIManager = (window as any).UIManager;
+      if (UIManager) UIManager.showToast(`Maximum limit of ${limits.maxValue} reached`, "error");
+      return;
+    }
+
+    if (delta < 0 && limits.minValue !== null && newQty < limits.minValue) {
+      const UIManager = (window as any).UIManager;
+      if (UIManager) UIManager.showToast(`Minimum of ${limits.minValue} required`, "error");
+      return;
+    }
+
+    addon.orderQuantity = newQty;
+    if (addon.orderQuantity <= 0) {
+      parent.addOns.splice(addonIndex, 1);
+    }
+    this.saveToStorage();
+  }
+
+  removeAddOn(parentIndex: number, addonIndex: number): void {
+      const orderedItems = SchemaExtractor.getArray(this.order.orderedItem);
+      const parent = orderedItems[parentIndex] as any;
+      if (!parent || !parent.addOns) return;
+
+      parent.addOns.splice(addonIndex, 1);
+      this.saveToStorage();
   }
 
   updateItemDetails(index: number, freshBaseData: any | null): void {
@@ -228,8 +369,9 @@ export class CartManager {
           const { price, currency } = SchemaExtractor.extractPrice(freshMatch);
           const availability = SchemaExtractor.extractAvailability(freshMatch);
           const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(freshMatch);
+          const inventoryLevel = SchemaExtractor.extractInventoryLevel(freshMatch.offers || freshMatch);
 
-          item._constraints = { minValue, maxValue };
+          item._constraints = { minValue, maxValue, inventoryLevel };
           item.orderedItem.offers = {
               "@type": "Offer",
               price: price,

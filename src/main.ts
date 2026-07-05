@@ -218,7 +218,15 @@ export class App {
       }
     };
 
-    if (addBtn) addBtn.onclick = () => this.handleAddToCart();
+    if (addBtn) addBtn.onclick = () => {
+        this.handleAddToCart();
+        // Force re-render of addons to enable buttons
+        this.ProductRenderer.render(this.state.product!, this.state, (attr, val) => {
+            this.state.selectedVariants[attr] = val;
+            this.state.lastClickedAttribute = attr;
+            this.ProductRenderer.render(this.state.product!, this.state, () => {});
+        });
+    };
 
 
     if (searchForm) {
