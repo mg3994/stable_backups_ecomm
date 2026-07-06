@@ -41,17 +41,33 @@ export class BloggerDataService {
     if (!query || query.length < 2) return [];
 
     try {
-        const labelRegex = /label:([^|\s]+)/g;
+        // Updated regex to handle pipe separators: label:L1|label:L2 or label:L1 | label:L2
+        const labelRegex = /label:([^|\s\s]+)/g;
         const labels: string[] = [];
         let match;
-        let cleanedQuery = query;
         let labelPrefix = "";
 
         while ((match = labelRegex.exec(query)) !== null) {
-            labels.push(decodeURIComponent(match[1].replace(/_/g, ' ')));
-            labelPrefix += match[0] + " ";
+            labels.push(decodeURIComponent(match[1].trim().replace(/_/g, ' ')));
         }
-        cleanedQuery = query.replace(labelRegex, '').trim();
+
+        // Prefix for suggestions should maintain the labels but clean up the keyword part
+        const lastLabelIndex = query.lastIndexOf('|') > query.lastIndexOf('label:')
+            ? query.lastIndexOf('|') + 1
+            : query.lastIndexOf('label:');
+
+        // Find if there's a following label after the last pipe
+        const matches = Array.from(query.matchAll(labelRegex));
+        if (matches.length > 0) {
+            const lastMatch = matches[matches.length - 1];
+            labelPrefix = query.substring(0, lastMatch.index! + lastMatch[0].length).trim() + " ";
+            // If the query ends with a pipe, the prefix should include it
+            if (query.trim().endsWith('|')) {
+                labelPrefix = query.trim() + " ";
+            }
+        }
+
+        const cleanedQuery = query.replace(labelRegex, '').replace(/\|/g, '').trim();
 
         // If we have labels but no keyword yet, we should suggest within those labels
         const { entries } = await this.fetchFeedData(50, 1, labels, cleanedQuery);

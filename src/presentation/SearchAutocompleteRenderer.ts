@@ -22,8 +22,13 @@ export class SearchAutocompleteRenderer {
     // Create dropdown
     this.dropdown = document.createElement('div');
     this.dropdown.className = 'antinna-search-dropdown';
-    input.parentElement?.style.setProperty('position', 'relative');
-    input.parentElement?.appendChild(this.dropdown);
+
+    // Find a suitable parent that spans the search bar
+    const group = input.closest('.search-input-group') || input.parentElement;
+    if (group) {
+        group.style.setProperty('position', 'relative', 'important');
+        group.appendChild(this.dropdown);
+    }
 
     let debounceTimer: any;
     input.oninput = () => {

@@ -96,10 +96,10 @@ export class UIManager {
       .antinna-country-code { color: var(--accent); font-weight: 800; font-size: 0.85rem; }
 
       .antinna-search-dropdown {
-        position: absolute; top: 100%; left: 0; width: 100%; background: var(--card);
+        position: absolute; top: 100%; left: 0; right: 0; background: var(--card);
         border: 1px solid rgba(0,0,0,0.1); border-radius: 0 0 12px 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 2000; display: none;
-        max-height: 300px; overflow-y: auto; margin-top: -1px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 9999; display: none;
+        max-height: 300px; overflow-y: auto; margin-top: 0; width: 100%; box-sizing: border-box;
       }
       .antinna-search-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.9rem; transition: background 0.2s; color: var(--text); }
       .antinna-search-item:hover, .antinna-search-item.active { background: rgba(0,0,0,0.05); color: var(--accent); }
