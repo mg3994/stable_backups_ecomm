@@ -22,12 +22,6 @@ export class SearchAutocompleteRenderer {
     // Create dropdown
     this.dropdown = document.createElement('div');
     this.dropdown.className = 'antinna-search-dropdown';
-    this.dropdown.style.cssText = `
-        position: absolute; top: 100%; left: 0; width: 100%; background: var(--card);
-        border: 1px solid rgba(0,0,0,0.1); border-radius: 0 0 12px 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 2000; display: none;
-        max-height: 300px; overflow-y: auto; margin-top: -1px;
-    `;
     input.parentElement?.style.setProperty('position', 'relative');
     input.parentElement?.appendChild(this.dropdown);
 
@@ -66,7 +60,6 @@ export class SearchAutocompleteRenderer {
 
     this.dropdown.innerHTML = this.suggestions.map((s, i) => `
         <div class="antinna-search-item ${i === this.selectedIndex ? 'active' : ''}"
-             style="padding: 12px 15px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.9rem; transition: background 0.2s;"
              onclick="window.handleSuggestionClick('${s.replace(/'/g, "\\'")}')">
             ${s}
         </div>

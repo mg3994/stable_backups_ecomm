@@ -16,23 +16,26 @@ export class LocationRenderer {
     UIManager.injectModalStyles();
     const backdrop = UIManager.el('loc-modal-backdrop');
     if (backdrop) {
-        // Ensure clear button exists in modal if not present
-        if (!UIManager.el('modal-clear-loc-btn')) {
-            const footer = backdrop.querySelector('.antinna-geo-content');
+        const data = this.locationManager.getData();
+        const hasLocation = !!(data.pin || data.city);
+
+        let clearBtn = UIManager.el('modal-clear-loc-btn');
+        if (!clearBtn) {
+            const footer = backdrop.querySelector('.antinna-geo-content') || backdrop.querySelector('.modal-content');
             if (footer) {
-                const clearBtn = document.createElement('button');
+                clearBtn = document.createElement('button');
                 clearBtn.id = 'modal-clear-loc-btn';
-                clearBtn.className = 'v-btn';
-                clearBtn.style.marginTop = '15px';
-                clearBtn.style.width = '100%';
-                clearBtn.style.background = 'rgba(255, 59, 48, 0.1)';
-                clearBtn.style.color = '#ff3b30';
-                clearBtn.style.border = '1px solid rgba(255, 59, 48, 0.2)';
+                clearBtn.className = 'btn-clear-loc';
                 clearBtn.innerHTML = 'Clear Location';
                 clearBtn.onclick = () => this.handleClearLocation();
                 footer.appendChild(clearBtn);
             }
         }
+
+        if (clearBtn) {
+            clearBtn.style.display = hasLocation ? 'block' : 'none';
+        }
+
         backdrop.classList.add('active');
     }
   }
