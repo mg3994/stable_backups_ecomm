@@ -11,6 +11,7 @@ import { UIManager } from './presentation/UIManager';
 import { GeoVerificationRenderer } from './presentation/GeoVerificationRenderer';
 import { OrderSummaryRenderer } from './presentation/OrderSummaryRenderer';
 import { PhoneVerificationRenderer } from './presentation/PhoneVerificationRenderer';
+import { SearchAutocompleteRenderer } from './presentation/SearchAutocompleteRenderer';
 
 export class App {
   private state: AppState = {
@@ -42,6 +43,7 @@ export class App {
   public GeoVerificationRenderer = new GeoVerificationRenderer(this.LocationManager);
   public OrderSummaryRenderer = new OrderSummaryRenderer(this.CartManager);
   public PhoneVerificationRenderer = new PhoneVerificationRenderer();
+  public SearchAutocompleteRenderer?: SearchAutocompleteRenderer;
 
   constructor() {
     this.detectContext();
@@ -125,6 +127,7 @@ export class App {
     (window as any).startCheckout = () => this.startCheckout();
     (window as any).showOrderSummary = () => this.showOrderSummary();
     (window as any).showGeoVerification = () => this.showGeoVerification();
+    (window as any).handleClearLocation = () => this.LocationRenderer.handleClearLocation();
     (window as any).handleAddToCart = () => this.handleAddToCart();
     (window as any).setQuantity = (q: number) => { this.state.quantity = q; };
     (window as any).loadProductData = () => this.loadProductData();
@@ -140,6 +143,7 @@ export class App {
       this.updateCategoryLinks();
       this.highlightActiveLabels();
       this.initSearchInput();
+      this.SearchAutocompleteRenderer = new SearchAutocompleteRenderer("search-q", this.BloggerDataService);
     });
   }
 

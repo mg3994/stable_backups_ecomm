@@ -30,6 +30,11 @@ export class LocationManager {
     this.save();
   }
 
+  clear(): void {
+    this.data = { lat: null, lon: null, pin: null, city: null };
+    localStorage.removeItem(this.storageKey);
+  }
+
   async reverseGeocode(lat: number, lon: number): Promise<Partial<LocationData>> {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
