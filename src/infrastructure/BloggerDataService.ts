@@ -41,14 +41,29 @@ export class BloggerDataService {
     if (!query || query.length < 2) return [];
 
     try {
-        const { entries } = await this.fetchFeedData(50, 1, '', query);
+        const labelRegex = /label:([^|\s]+)/g;
+        const labels: string[] = [];
+        let match;
+        let cleanedQuery = query;
+        let labelPrefix = "";
+
+        while ((match = labelRegex.exec(query)) !== null) {
+            labels.push(decodeURIComponent(match[1].replace(/_/g, ' ')));
+            labelPrefix += match[0] + " ";
+        }
+        cleanedQuery = query.replace(labelRegex, '').trim();
+
+        // If we have labels but no keyword yet, we should suggest within those labels
+        const { entries } = await this.fetchFeedData(50, 1, labels, cleanedQuery);
         const suggestions = new Set<string>();
-        const normalizedQuery = query.toLowerCase();
+        const normalizedKeyword = cleanedQuery.toLowerCase();
 
         entries.forEach(entry => {
             const title = entry.title?.$t || "";
-            if (title.toLowerCase().includes(normalizedQuery)) {
-                suggestions.add(title);
+            // If keyword is empty, suggest everything in the label.
+            // If not empty, only suggest matches.
+            if (!normalizedKeyword || title.toLowerCase().includes(normalizedKeyword)) {
+                suggestions.add(labelPrefix + title);
             }
 
             const data = this.extractSchemaFromEntry(entry);
@@ -57,14 +72,14 @@ export class BloggerDataService {
                 if (keywords && typeof keywords === 'string') {
                     keywords.split(',').forEach(k => {
                         const trimmed = k.trim();
-                        if (trimmed.toLowerCase().includes(normalizedQuery)) {
-                            suggestions.add(trimmed);
+                        if (!normalizedKeyword || trimmed.toLowerCase().includes(normalizedKeyword)) {
+                            suggestions.add(labelPrefix + trimmed);
                         }
                     });
                 }
                 const name = SchemaExtractor.getFirst(data.name);
-                if (name && typeof name === 'string' && name.toLowerCase().includes(normalizedQuery)) {
-                    suggestions.add(name);
+                if (name && typeof name === 'string' && (!normalizedKeyword || name.toLowerCase().includes(normalizedKeyword))) {
+                    suggestions.add(labelPrefix + name);
                 }
             }
         });
