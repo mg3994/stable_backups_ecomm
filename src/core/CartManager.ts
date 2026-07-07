@@ -485,6 +485,25 @@ export class CartManager {
       return errors;
   }
 
+  getMaxLeadTime(): number {
+      const items = SchemaExtractor.getArray(this.order.orderedItem);
+      let maxLead = 0;
+
+      items.forEach((item: any) => {
+          const lead = SchemaExtractor.extractLeadTime(item.orderedItem);
+          if (lead > maxLead) maxLead = lead;
+
+          if (item.addOns) {
+              item.addOns.forEach((addon: any) => {
+                  const aLead = SchemaExtractor.extractLeadTime(addon.orderedItem);
+                  if (aLead > maxLead) maxLead = aLead;
+              });
+          }
+      });
+
+      return maxLead;
+  }
+
   clear(): void {
     this.order.orderedItem = [];
     this.saveToStorage();

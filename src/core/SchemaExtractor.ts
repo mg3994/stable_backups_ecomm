@@ -238,6 +238,36 @@ export class SchemaExtractor {
       return results;
   }
 
+  static extractLeadTime(data: any): number {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return 0;
+
+      const lt = this.getFirst(obj.deliveryLeadTime) ||
+                 this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.deliveryLeadTime) ||
+                 this.getFirst(this.getArray(obj.itemOffered)[0]?.deliveryLeadTime) ||
+                 this.getFirst(this.getArray(obj.offers)[0]?.deliveryLeadTime) ||
+                 this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.deliveryLeadTime);
+
+      if (!lt) return 0;
+
+      // Handle QuantitativeValue
+      if (typeof lt === 'object') {
+          const val = Number(this.getFirst(lt.value)) || 0;
+          const unit = this.getFirst(lt.unitCode) || this.getFirst(lt.unitText) || "MIN";
+
+          if (unit === 'HUR' || unit === 'hour' || unit === 'hours') return val * 60;
+          if (unit === 'DAY' || unit === 'day' || unit === 'days') return val * 24 * 60;
+          return val; // Assume minutes by default
+      }
+
+      // Handle string "35 mins" or "1 hour"
+      const str = String(lt).toLowerCase();
+      const num = parseInt(str) || 0;
+      if (str.includes('hour')) return num * 60;
+      if (str.includes('day')) return num * 24 * 60;
+      return num;
+  }
+
   static isLocationInArea(targetLat: number | null, targetLon: number | null, targetAddress: any, area: any): boolean {
       if (!area) return true; // If no area defined, assume global
 

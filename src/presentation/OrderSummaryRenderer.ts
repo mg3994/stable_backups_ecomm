@@ -51,6 +51,18 @@ export class OrderSummaryRenderer {
         `;
     }
 
+    const maxLeadTime = this.cartManager.getMaxLeadTime();
+    const travelDurationStr = verifiedLocation?.duration || "0 mins";
+    const travelMinutes = parseInt(travelDurationStr) || 0;
+    const totalMinutes = travelMinutes + maxLeadTime;
+
+    let formattedEstTime = `${totalMinutes} mins`;
+    if (totalMinutes >= 60) {
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        formattedEstTime = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+
     modal.innerHTML = `
       <div class="antinna-geo-content">
         <div class="antinna-geo-header">
@@ -68,7 +80,7 @@ export class OrderSummaryRenderer {
                   (verifiedLocation?.address || 'Verified Location')}
             </div>
             <div style="font-size:0.8rem; color:var(--accent); margin-top:4px;">
-                Distance: ${verifiedLocation?.distance || '--'} | Est. Time: ${verifiedLocation?.duration || '--'}
+                Distance: ${verifiedLocation?.distance || '--'} | Est. Time: ${formattedEstTime}
             </div>
         </div>
 
