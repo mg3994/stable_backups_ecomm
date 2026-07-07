@@ -150,9 +150,9 @@ export class GeoVerificationRenderer {
   }
 
   private collectDeliveryData(): any {
-      const pos = this.targetMarker?.getPosition();
-      const lat = pos ? pos.lat() : ((window as any).lastGeoResponse?.lat || 0);
-      const lng = pos ? pos.lng() : ((window as any).lastGeoResponse?.lng || 0);
+      const pos = this.targetMarker?.getLatLng();
+      const lat = pos ? pos.lat : ((window as any).lastGeoResponse?.lat || 0);
+      const lng = pos ? pos.lng : ((window as any).lastGeoResponse?.lng || 0);
 
       return {
           "@type": "ParcelDelivery",
@@ -182,60 +182,54 @@ export class GeoVerificationRenderer {
       };
   }
 
-  private initMap(): void {
-    if (!(window as any).google || !(window as any).google.maps) {
-        console.warn("Google Maps not loaded yet.");
-        return;
-    }
+  private async initMap(): Promise<void> {
+    await UIManager.injectLeaflet();
+    const L = (window as any).L;
+    if (!L) return;
 
-    const google = (window as any).google;
-    const center = new google.maps.LatLng(this.currentDeviceLat, this.currentDeviceLng);
+    const center: [number, number] = [this.currentDeviceLat, this.currentDeviceLng];
 
     if (!this.map) {
-      const options = {
-        zoom: 13,
-        center: center,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        disableDefaultUI: true,
-        zoomControl: true
-      };
-      this.map = new google.maps.Map(UIManager.el("antinna-geo-map-canvas"), options);
+      this.map = L.map(UIManager.el("antinna-geo-map-canvas")).setView(center, 13);
 
-      this.targetMarker = new google.maps.Marker({
-        position: center,
-        map: this.map,
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+      }).addTo(this.map);
+
+      this.targetMarker = L.marker(center, {
         draggable: true,
-        animation: google.maps.Animation.DROP,
         title: "Delivery Location"
+      }).addTo(this.map);
+
+      this.map.on('click', (e: any) => {
+        this.handleManualPinPosition(e.latlng.lat, e.latlng.lng);
       });
 
-      google.maps.event.addListener(this.map, 'click', (event: any) => {
-        this.handleManualPinPosition(event.latLng.lat(), event.latLng.lng());
-      });
-
-      google.maps.event.addListener(this.targetMarker, 'dragend', (event: any) => {
-        this.handleManualPinPosition(event.latLng.lat(), event.latLng.lng());
+      this.targetMarker.on('dragend', (e: any) => {
+        const pos = e.target.getLatLng();
+        this.handleManualPinPosition(pos.lat, pos.lng);
       });
     } else {
-        this.map.setCenter(center);
-        this.targetMarker.setPosition(center);
+        this.map.setView(center, 13);
+        this.targetMarker.setLatLng(center);
     }
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         this.currentDeviceLat = pos.coords.latitude;
         this.currentDeviceLng = pos.coords.longitude;
-        const loc = new google.maps.LatLng(this.currentDeviceLat, this.currentDeviceLng);
-        this.map.setCenter(loc);
-        this.targetMarker.setPosition(loc);
+        const loc: [number, number] = [this.currentDeviceLat, this.currentDeviceLng];
+        this.map.setView(loc, 13);
+        this.targetMarker.setLatLng(loc);
         UIManager.setContent('antinna-geo-status', "Position synchronized.");
       });
     }
   }
 
   private async handleManualPinPosition(lat: number, lng: number): Promise<void> {
-    const google = (window as any).google;
-    this.targetMarker.setPosition(new google.maps.LatLng(lat, lng));
+    if (this.targetMarker) {
+        this.targetMarker.setLatLng([lat, lng]);
+    }
     UIManager.setContent('antinna-geo-status', "Pin dropped. Computing metrics...");
 
     try {
@@ -288,11 +282,9 @@ export class GeoVerificationRenderer {
         try {
           const response = await this.appsScriptService.processLocationAndMetrics(this.currentDeviceLat, this.currentDeviceLng, text);
           if (response.status === "success") {
-            const google = (window as any).google;
-            const newPos = new google.maps.LatLng(response.lat, response.lng);
-            this.map.setCenter(newPos);
-            this.map.setZoom(15);
-            this.targetMarker.setPosition(newPos);
+            const newPos: [number, number] = [response.lat, response.lng];
+            this.map.setView(newPos, 15);
+            this.targetMarker.setLatLng(newPos);
             this.updateTelemetryUI(response);
           }
         } catch (e) {}

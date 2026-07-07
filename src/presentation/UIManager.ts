@@ -115,6 +115,22 @@ export class UIManager {
     document.head.appendChild(style);
   }
 
+  static injectLeaflet(): Promise<void> {
+    return new Promise((resolve) => {
+        if ((window as any).L) return resolve();
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => resolve();
+        document.head.appendChild(script);
+    });
+  }
+
   static showToast(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
     this.injectModalStyles();
     let container = document.getElementById('toast-container');
