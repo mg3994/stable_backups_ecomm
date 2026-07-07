@@ -84,7 +84,7 @@ export class OrderSummaryRenderer {
         <div id="google-pay-button-container" style="display:flex; justify-content:center; margin-top:20px;"></div>
 
         <p style="font-size:0.7rem; text-align:center; opacity:0.5; margin-top:15px;">
-            By clicking Pay, you agree to our terms and conditions.
+            By clicking Pay, you agree to our <a href="/p/terms-conditions.html" target="_blank" style="color:inherit; text-decoration:underline;">terms and conditions</a>.
         </p>
       </div>
     `;
