@@ -217,10 +217,15 @@ export class SchemaExtractor {
       if (!obj) return [];
 
       const area = this.getFirst(obj.areaServed) ||
+                   this.getFirst(obj.eligibleRegion) ||
                    this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.areaServed) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.eligibleRegion) ||
                    this.getFirst(this.getArray(obj.itemOffered)[0]?.areaServed) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.eligibleRegion) ||
                    this.getFirst(this.getArray(obj.offers)[0]?.areaServed) ||
-                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.areaServed);
+                   this.getFirst(this.getArray(obj.offers)[0]?.eligibleRegion) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.areaServed) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.eligibleRegion);
 
       return this.getArray(area);
   }

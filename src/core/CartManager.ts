@@ -459,7 +459,7 @@ export class CartManager {
 
           if (areas.length > 0) {
               const isServiceable = areas.some(area =>
-                  SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
+                  SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lon || verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
               );
               if (!isServiceable) {
                   errors.push(SchemaExtractor.getFirst(itemOffered.name) || "An item");
@@ -472,7 +472,7 @@ export class CartManager {
                   const aAreas = SchemaExtractor.extractAreaServed(addon.orderedItem);
                   if (aAreas.length > 0) {
                       const isAServiceable = aAreas.some(area =>
-                          SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
+                          SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lon || verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
                       );
                       if (!isAServiceable) {
                           errors.push(SchemaExtractor.getFirst(addon.orderedItem.name) || "An addon");
