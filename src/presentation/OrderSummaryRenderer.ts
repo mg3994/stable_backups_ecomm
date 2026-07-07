@@ -16,6 +16,8 @@ export class OrderSummaryRenderer {
     }
 
     const order = this.cartManager.getOrder() as any;
+    const serviceabilityErrors = this.cartManager.getServiceabilityErrors(verifiedLocation);
+    const isServiceable = serviceabilityErrors.length === 0;
 
     const itemsHtml = SchemaExtractor.getArray(order.orderedItem).map((item: any) => {
         const itemOffered = item.orderedItem || item.itemOffered || item;
@@ -35,12 +37,28 @@ export class OrderSummaryRenderer {
         `;
     }).join('');
 
+    let errorHtml = '';
+    if (!isServiceable) {
+        errorHtml = `
+            <div style="margin-bottom:20px; padding:15px; background:#fff5f5; border:1px solid #feb2b2; border-radius:12px; color:#c53030; font-size:0.85rem;">
+                <div style="font-weight:800; margin-bottom:5px;">⚠️ Non-Serviceable Items</div>
+                <p style="margin:0;">The following items are not available in your area:</p>
+                <ul style="margin:5px 0 0 15px; padding:0;">
+                    ${serviceabilityErrors.map(e => `<li>${e}</li>`).join('')}
+                </ul>
+                <div style="margin-top:10px; font-weight:700;">Please remove these from your cart to continue.</div>
+            </div>
+        `;
+    }
+
     modal.innerHTML = `
       <div class="antinna-geo-content">
         <div class="antinna-geo-header">
           <h3>Order Summary</h3>
           <button class="antinna-geo-close" onclick="document.getElementById('antinna-summary-modal').classList.remove('active')">&times;</button>
         </div>
+
+        ${errorHtml}
 
         <div style="margin-bottom:20px; padding:15px; background:var(--bg); border-radius:12px;">
             <div style="font-size:0.75rem; text-transform:uppercase; color:#777; margin-bottom:5px; font-weight:800;">Delivery Destination</div>
@@ -72,12 +90,22 @@ export class OrderSummaryRenderer {
     `;
 
     modal.classList.add('active');
-    this.renderGooglePayButton(order, verifiedLocation);
+    this.renderGooglePayButton(order, verifiedLocation, isServiceable);
   }
 
-  private renderGooglePayButton(order: any, verifiedLocation: any): void {
+  private renderGooglePayButton(order: any, verifiedLocation: any, isServiceable: boolean): void {
       const container = UIManager.el('google-pay-button-container');
       if (!container) return;
+      container.innerHTML = '';
+
+      if (!isServiceable) {
+          container.innerHTML = `
+            <button class="v-btn" style="width:100%; opacity:0.5; cursor:not-allowed;" disabled>
+                Check Coverage to Pay
+            </button>
+          `;
+          return;
+      }
 
       const isDark = document.documentElement.classList.contains('dark');
 

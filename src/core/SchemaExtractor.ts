@@ -211,4 +211,76 @@ export class SchemaExtractor {
 
       return `${val} ${unitLabel}`.trim();
   }
+
+  static extractAreaServed(data: any): any[] {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return [];
+
+      const area = this.getFirst(obj.areaServed) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.areaServed) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.areaServed) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.areaServed) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.areaServed);
+
+      return this.getArray(area);
+  }
+
+  static isLocationInArea(targetLat: number | null, targetLon: number | null, targetAddress: any, area: any): boolean {
+      if (!area) return true; // If no area defined, assume global
+
+      const type = this.getFirst(area["@type"]);
+      const name = this.normalizeName(this.getFirst(area.name) || "");
+      const postalCode = this.getFirst(area.postalCode);
+
+      // 1. Check GeoCircle / GeoShape
+      if (type === 'GeoCircle') {
+          if (targetLat === null || targetLon === null) return false;
+          const midpoint = area.geoMidpoint;
+          if (!midpoint) return false;
+          const mLat = Number(this.getFirst(midpoint.latitude));
+          const mLon = Number(this.getFirst(midpoint.longitude));
+          const radius = Number(this.getFirst(area.geoRadius)) || 0; // in meters
+
+          const dist = this.calculateDistance(targetLat, targetLon, mLat, mLon);
+          return dist <= radius;
+      }
+
+      // 2. Check City / State / AdministrativeArea
+      if (type === 'City' || type === 'AdministrativeArea' || type === 'State' || type === 'Country') {
+          const tCity = this.normalizeName(targetAddress?.addressLocality || "");
+          const tState = this.normalizeName(targetAddress?.addressRegion || "");
+          const tCountry = this.normalizeName(targetAddress?.addressCountry || "");
+
+          if (name === tCity || name === tState || name === tCountry) return true;
+      }
+
+      // 3. Check PostalAddress / PostalCode
+      if (type === 'PostalAddress' || postalCode) {
+          const tPin = String(targetAddress?.postalCode || "");
+          const aPin = String(postalCode || this.getFirst(area.postalCode) || "");
+          if (tPin === aPin && tPin !== "") return true;
+
+          // Also check locality in address
+          const tLoc = this.normalizeName(targetAddress?.addressLocality || "");
+          const aLoc = this.normalizeName(this.getFirst(area.addressLocality) || "");
+          if (tLoc === aLoc && tLoc !== "") return true;
+      }
+
+      return false;
+  }
+
+  private static calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // metres
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // in metres
+  }
 }

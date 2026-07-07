@@ -449,6 +449,42 @@ export class CartManager {
     return orderedItems.reduce((sum: number, item: any) => sum + Number(item.orderQuantity || 0), 0);
   }
 
+  getServiceabilityErrors(verifiedLocation: any): string[] {
+      const items = SchemaExtractor.getArray(this.order.orderedItem);
+      const errors: string[] = [];
+
+      items.forEach((item: any) => {
+          const itemOffered = item.orderedItem;
+          const areas = SchemaExtractor.extractAreaServed(itemOffered);
+
+          if (areas.length > 0) {
+              const isServiceable = areas.some(area =>
+                  SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
+              );
+              if (!isServiceable) {
+                  errors.push(SchemaExtractor.getFirst(itemOffered.name) || "An item");
+              }
+          }
+
+          // Check addons
+          if (item.addOns) {
+              item.addOns.forEach((addon: any) => {
+                  const aAreas = SchemaExtractor.extractAreaServed(addon.orderedItem);
+                  if (aAreas.length > 0) {
+                      const isAServiceable = aAreas.some(area =>
+                          SchemaExtractor.isLocationInArea(verifiedLocation?.lat, verifiedLocation?.lng, verifiedLocation?.addressDetails, area)
+                      );
+                      if (!isAServiceable) {
+                          errors.push(SchemaExtractor.getFirst(addon.orderedItem.name) || "An addon");
+                      }
+                  }
+              });
+          }
+      });
+
+      return errors;
+  }
+
   clear(): void {
     this.order.orderedItem = [];
     this.saveToStorage();
