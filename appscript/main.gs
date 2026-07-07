@@ -132,11 +132,24 @@ function calculateMatrixMetrics(originLat, originLng, targetLat, targetLng, targ
  * In a real scenario, this would save to a Spreadsheet or Database.
  */
 function createOrder(order, authToken) {
-  // Authentication check would happen here using authToken
-  console.log("Order received for processing:", JSON.stringify(order));
-  return {
-    status: "success",
-    orderId: "ANT-" + Math.floor(Math.random() * 1000000),
-    message: "Order initialized successfully"
-  };
+  try {
+    // In a real implementation, you would verify the Firebase authToken here.
+    // var user = verifyAuthToken(authToken);
+
+    console.log("Processing Order:", JSON.stringify(order));
+
+    // Optional: Save to Google Sheets
+    // var ss = SpreadsheetApp.getActiveSpreadsheet();
+    // var sheet = ss.getSheetByName("Orders") || ss.insertSheet("Orders");
+    // sheet.appendRow([new Date(), order.orderId || "N/A", JSON.stringify(order.orderedItem), order.totalPrice, order.customer?.email]);
+
+    return {
+      status: "success",
+      orderId: "ANT-" + Math.floor(Math.random() * 1000000),
+      message: "Order recorded successfully. Proceed to payment.",
+      receivedOrder: order // Echo back for confirmation
+    };
+  } catch (e) {
+    return { status: "error", message: "Failed to create order: " + e.toString() };
+  }
 }

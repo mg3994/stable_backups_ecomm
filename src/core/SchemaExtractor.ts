@@ -213,21 +213,29 @@ export class SchemaExtractor {
   }
 
   static extractAreaServed(data: any): any[] {
-      const obj = Array.isArray(data) ? data[0] : data;
-      if (!obj) return [];
+      const results: any[] = [];
+      const stack = [data];
+      const seen = new Set();
 
-      const area = this.getFirst(obj.areaServed) ||
-                   this.getFirst(obj.eligibleRegion) ||
-                   this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.areaServed) ||
-                   this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.eligibleRegion) ||
-                   this.getFirst(this.getArray(obj.itemOffered)[0]?.areaServed) ||
-                   this.getFirst(this.getArray(obj.itemOffered)[0]?.eligibleRegion) ||
-                   this.getFirst(this.getArray(obj.offers)[0]?.areaServed) ||
-                   this.getFirst(this.getArray(obj.offers)[0]?.eligibleRegion) ||
-                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.areaServed) ||
-                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.eligibleRegion);
+      while (stack.length > 0) {
+          const current = stack.pop();
+          if (!current || typeof current !== 'object' || seen.has(current)) continue;
+          seen.add(current);
 
-      return this.getArray(area);
+          const areas = this.getArray(current.areaServed || current.eligibleRegion);
+          if (areas.length > 0) {
+              results.push(...areas);
+          }
+
+          // Descend into common Schema.org containers
+          if (current.itemOffered) stack.push(current.itemOffered);
+          if (current.offers) stack.push(...this.getArray(current.offers));
+          if (current.hasVariant) stack.push(...this.getArray(current.hasVariant));
+          if (current.hasOfferCatalog) stack.push(...this.getArray(current.hasOfferCatalog));
+          if (current.itemListElement) stack.push(...this.getArray(current.itemListElement));
+      }
+
+      return results;
   }
 
   static isLocationInArea(targetLat: number | null, targetLon: number | null, targetAddress: any, area: any): boolean {
