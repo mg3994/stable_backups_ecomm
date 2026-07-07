@@ -190,11 +190,23 @@ export class GeoVerificationRenderer {
     const center: [number, number] = [this.currentDeviceLat, this.currentDeviceLng];
 
     if (!this.map) {
-      this.map = L.map(UIManager.el("antinna-geo-map-canvas")).setView(center, 13);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri'
+      });
+      const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}');
+      const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors'
-      }).addTo(this.map);
+      });
+
+      this.map = L.map(UIManager.el("antinna-geo-map-canvas"), {
+          layers: [satellite, labels]
+      }).setView(center, 13);
+
+      const baseMaps = {
+          "Satellite Hybrid": L.layerGroup([satellite, labels]),
+          "Streets": streets
+      };
+      L.control.layers(baseMaps).addTo(this.map);
 
       this.targetMarker = L.marker(center, {
         draggable: true,
