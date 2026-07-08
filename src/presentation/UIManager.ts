@@ -111,6 +111,17 @@ export class UIManager {
         font-weight: 700; transition: all 0.2s;
       }
       .btn-clear-loc:hover { background: rgba(255, 59, 48, 0.2); }
+
+      .g-signin-button {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #FFFFFF; color: #757575;
+        border: 1px solid #DDDDDD; border-radius: 4px;
+        padding: 1px; cursor: pointer; transition: box-shadow 0.2s;
+        font-family: 'Roboto', arial, sans-serif; font-weight: 500; font-size: 14px;
+      }
+      .g-signin-button:hover { box-shadow: 0 1px 2px 0 rgba(60,64,67,0.30), 0 1px 3px 1px rgba(60,64,67,0.15); }
+      .g-signin-button .g-icon-wrapper { background: #fff; padding: 11px; border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center; }
+      .g-signin-button .g-text { padding: 0 12px; }
     `;
     document.head.appendChild(style);
   }

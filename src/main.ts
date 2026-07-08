@@ -513,15 +513,19 @@ export class App {
                     <button class="antinna-geo-close" onclick="document.getElementById('antinna-login-modal').classList.remove('active')">&times;</button>
                 </div>
                 <p style="margin-bottom:30px; opacity:0.8;">Please sign in to your account to finalize your order and proceed to payment.</p>
-                <button class="v-btn active btn-google-login" id="google-login-btn-checkout" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:15px;">
-                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;">
-                      <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                      <path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    Continue with Google
-                </button>
+                <div style="display:flex; justify-content:center;">
+                    <button class="g-signin-button" id="google-login-btn-checkout">
+                        <div class="g-icon-wrapper">
+                            <svg viewBox="0 0 18 18" width="18px" height="18px" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.83 2.07-1.79 2.73v2.27h2.9c1.7-1.57 2.69-3.87 2.69-6.63z"/>
+                                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.27c-.8.54-1.83.86-3.06.86-2.33 0-4.3-1.58-5-3.7H.9v2.33C2.38 16.03 5.46 18 9 18z"/>
+                                <path fill="#FBBC05" d="M4 10.71a4.99 4.99 0 010-3.42V4.96H.9a8.99 8.99 0 000 8.08L4 10.71z"/>
+                                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.22C13.46.79 11.43 0 9 0 5.46 0 2.38 1.97.9 4.96L4 7.29c.7-2.12 2.67-3.71 5-3.71z"/>
+                            </svg>
+                        </div>
+                        <span class="g-text">Sign in with Google</span>
+                    </button>
+                </div>
             </div>
           `;
           document.body.appendChild(loginModal);
