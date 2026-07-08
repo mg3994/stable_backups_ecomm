@@ -114,13 +114,14 @@ export class UIManager {
 
       .g-signin-button {
         display: inline-flex; align-items: center; justify-content: center;
-        background: #FFFFFF; color: #757575;
-        border: 1px solid #DDDDDD; border-radius: 4px;
-        padding: 1px; cursor: pointer; transition: box-shadow 0.2s;
-        font-family: 'Roboto', arial, sans-serif; font-weight: 500; font-size: 14px;
+        background: #131314; color: #E3E3E3;
+        border: 1px solid #8E918F; border-radius: 20px;
+        padding: 1px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s;
+        font-family: 'Google Sans Medium', 'Roboto', arial, sans-serif;
+        font-weight: 500; font-size: 14px; line-height: 20px;
       }
-      .g-signin-button:hover { box-shadow: 0 1px 2px 0 rgba(60,64,67,0.30), 0 1px 3px 1px rgba(60,64,67,0.15); }
-      .g-signin-button .g-icon-wrapper { background: #fff; padding: 11px; border-radius: 4px 0 0 4px; display: flex; align-items: center; justify-content: center; }
+      .g-signin-button:hover { background: #1e1e1f; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.30), 0 1px 3px 1px rgba(0,0,0,0.15); }
+      .g-signin-button .g-icon-wrapper { background: transparent; padding: 10px 0 10px 12px; border-radius: 20px 0 0 20px; display: flex; align-items: center; justify-content: center; }
       .g-signin-button .g-text { padding: 0 12px; }
     `;
     document.head.appendChild(style);
