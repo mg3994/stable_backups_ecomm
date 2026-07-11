@@ -5,6 +5,7 @@ import { SchemaExtractor } from '../core/SchemaExtractor';
 
 export class ProductRenderer {
   render(p: Product | ProductGroup | Service | any, state: AppState, onVariantChange: (attr: string, val: string) => void): void {
+    UIManager.injectModalStyles();
     const isBusiness = p["@type"] === "LocalBusiness" || p["@type"] === "Store" || p["@type"] === "Organization";
     const isPrimaryService = p["@type"] === "Service";
 
@@ -100,7 +101,7 @@ export class ProductRenderer {
       if (condition) {
           const badge = document.createElement('span');
           badge.id = 'p-condition-badge';
-          badge.className = 'condition-badge';
+          badge.className = `condition-badge cond-${condition.toLowerCase()}`;
           badge.textContent = condition;
           container.appendChild(badge);
       }
@@ -449,7 +450,10 @@ export class ProductRenderer {
         ? `<div style="margin-top:10px; display:flex; gap:5px; flex-wrap:wrap;">${amenities.map(a => `<span style="font-size:0.7rem; background:rgba(0,0,0,0.05); padding:2px 8px; border-radius:4px;">${SchemaExtractor.getFirst(a.name)}</span>`).join('')}</div>`
         : '';
 
-    inf.innerHTML = `${statusHtml}<br/><strong>${displayName}</strong><br/>${SchemaExtractor.getFirst(s.telephone) ? `&#128222; ${SchemaExtractor.getFirst(s.telephone)}<br/>` : ""}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}${amenitiesHtml}`;
+    const phone = SchemaExtractor.getFirst(s.telephone);
+    const phoneHtml = phone ? `&#128222; <a href="tel:${phone}" style="color:inherit; text-decoration:none;">${phone}</a><br/>` : "";
+
+    inf.innerHTML = `${statusHtml}<br/><strong>${displayName}</strong><br/>${phoneHtml}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}${amenitiesHtml}`;
     if (maps) {
       const geo = SchemaExtractor.getFirst(s.geo);
       if (SchemaExtractor.getFirst(s.hasMap) || geo) {

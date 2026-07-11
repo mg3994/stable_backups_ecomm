@@ -113,7 +113,13 @@ export class UIManager {
       .btn-clear-loc:hover { background: rgba(255, 59, 48, 0.2); }
 
       .condition-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 900; background: #f1f5f9; color: #64748b; text-transform: uppercase; border: 1px solid #e2e8f0; margin-left: 10px; vertical-align: middle; letter-spacing: 0.5px; }
+      .condition-badge.cond-new { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+      .condition-badge.cond-refurbished { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+      .condition-badge.cond-used { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+      .condition-badge.cond-damaged { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
       html.dark .condition-badge { background: #1e293b; color: #94a3b8; border-color: #334155; }
+      html.dark .condition-badge.cond-new { background: rgba(3, 105, 161, 0.2); color: #7dd3fc; border-color: rgba(3, 105, 161, 0.3); }
+      html.dark .condition-badge.cond-refurbished { background: rgba(146, 64, 14, 0.2); color: #fcd34d; border-color: rgba(146, 64, 14, 0.3); }
 
       .antinna-3d-active { overflow: hidden !important; height: 100vh; position: fixed; width: 100%; }
       .antinna-3d-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: none; flex-direction: column; touch-action: none; }
