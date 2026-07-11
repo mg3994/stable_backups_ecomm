@@ -31,7 +31,7 @@ export class OrderSummaryRenderer {
             const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
             return `
                 <div style="display:flex; justify-content:space-between; font-size:0.75rem; opacity:0.7; padding-left:15px; margin-top:4px;">
-                    <span>+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)} x${addon.orderQuantity}</span>
+                    <span>+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)} <b>x${addon.orderQuantity}</b></span>
                     <span>${aCurrency} ${(parseFloat(aPrice) * Number(addon.orderQuantity)).toFixed(2)}</span>
                 </div>
             `;
