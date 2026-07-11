@@ -466,6 +466,15 @@ export class CartManager {
               }
           }
 
+          // Check Business Hours
+          const seller = item.seller;
+          if (seller) {
+              const status = SchemaExtractor.isBusinessOpen(seller);
+              if (!status.isOpen) {
+                  errors.push(`${SchemaExtractor.getFirst(itemOffered.name)} (Seller currently closed: ${status.message})`);
+              }
+          }
+
           // Check addons
           if (item.addOns) {
               item.addOns.forEach((addon: any) => {

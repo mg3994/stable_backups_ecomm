@@ -259,6 +259,48 @@ export class SchemaExtractor {
       return results;
   }
 
+  static isBusinessOpen(data: any): { isOpen: boolean, message: string | null } {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return { isOpen: true, message: null };
+
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const todayName = dayNames[now.getDay()];
+
+      // 1. Check Special Opening Hours (Overrides)
+      const special = this.getArray(obj.specialOpeningHoursSpecification);
+      for (const s of special) {
+          const from = this.getFirst(s.validFrom);
+          const through = this.getFirst(s.validThrough);
+          if (from && through && todayStr >= String(from) && todayStr <= String(through)) {
+              const opens = String(this.getFirst(s.opens) || "00:00");
+              const closes = String(this.getFirst(s.closes) || "00:00");
+              if (opens === "00:00" && closes === "00:00") return { isOpen: false, message: "Closed for Holiday/Event" };
+              const isOpen = timeStr >= opens && timeStr <= closes;
+              return { isOpen, message: isOpen ? null : `Closed (Special Hours: ${opens}-${closes})` };
+          }
+      }
+
+      // 2. Check Regular Opening Hours
+      const regular = this.getArray(obj.openingHoursSpecification);
+      if (regular.length === 0) return { isOpen: true, message: null }; // No hours defined, assume open
+
+      const todayRegular = regular.find(r => {
+          const days = this.getArray(r.dayOfWeek).map(d => String(d).replace('https://schema.org/', ''));
+          return days.includes(todayName);
+      });
+
+      if (!todayRegular) return { isOpen: false, message: `Closed on ${todayName}` };
+
+      const opens = String(this.getFirst(todayRegular.opens) || "00:00");
+      const closes = String(this.getFirst(todayRegular.closes) || "23:59");
+      const isOpen = timeStr >= opens && timeStr <= closes;
+
+      return { isOpen, message: isOpen ? null : `Closed (Opens at ${opens})` };
+  }
+
   static extract3DModel(data: any): string | null {
       const obj = Array.isArray(data) ? data[0] : data;
       if (!obj) return null;

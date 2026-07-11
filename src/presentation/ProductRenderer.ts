@@ -64,6 +64,7 @@ export class ProductRenderer {
                        SchemaExtractor.getFirst(p.seller) ||
                        (p as Service).provider;
 
+        this.renderSeller(seller);
         this.renderOtherServices(seller, variant);
     }
   }
@@ -421,8 +422,32 @@ export class ProductRenderer {
       return;
     }
     box.style.display = "block";
+
+    const { isOpen, message } = SchemaExtractor.isBusinessOpen(s);
+    const statusHtml = isOpen
+        ? `<span class="stock-badge in-stock" style="margin:0 0 10px 0;">Open Now</span>`
+        : `<span class="stock-badge out-stock" style="margin:0 0 10px 0;">${message || 'Currently Closed'}</span>`;
+
+    // Disable add to cart if closed
+    const addBtn = UIManager.el<HTMLButtonElement>("add-to-cart-btn");
+    if (addBtn && !isOpen) {
+        addBtn.disabled = true;
+        addBtn.textContent = message || "Seller Currently Closed";
+    }
+
+    const alternateName = SchemaExtractor.getFirst(s.alternateName);
+    const name = SchemaExtractor.getFirst(s.name) || "Antinna";
+    const displayName = alternateName ? `${name} (${alternateName})` : name;
+
     const address = SchemaExtractor.getFirst(s.address);
-    inf.innerHTML = `<strong>${SchemaExtractor.getFirst(s.name) || "Antinna"}</strong><br/>${SchemaExtractor.getFirst(s.telephone) ? `&#128222; ${SchemaExtractor.getFirst(s.telephone)}<br/>` : ""}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}`;
+
+    // Amenities
+    const amenities = SchemaExtractor.getArray(s.amenityFeature);
+    const amenitiesHtml = amenities.length > 0
+        ? `<div style="margin-top:10px; display:flex; gap:5px; flex-wrap:wrap;">${amenities.map(a => `<span style="font-size:0.7rem; background:rgba(0,0,0,0.05); padding:2px 8px; border-radius:4px;">${SchemaExtractor.getFirst(a.name)}</span>`).join('')}</div>`
+        : '';
+
+    inf.innerHTML = `${statusHtml}<br/><strong>${displayName}</strong><br/>${SchemaExtractor.getFirst(s.telephone) ? `&#128222; ${SchemaExtractor.getFirst(s.telephone)}<br/>` : ""}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}${amenitiesHtml}`;
     if (maps) {
       const geo = SchemaExtractor.getFirst(s.geo);
       if (SchemaExtractor.getFirst(s.hasMap) || geo) {
