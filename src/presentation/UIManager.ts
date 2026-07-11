@@ -122,6 +122,13 @@ export class UIManager {
       .antinna-3d-close { background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; opacity: 0.8; }
       #antinna-3d-container { flex: 1; width: 100%; position: relative; }
       #antinna-3d-container model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
+      .antinna-ar-button {
+          position: absolute; top: 20px; right: 20px;
+          background: #fff; color: #000; border-radius: 30px;
+          padding: 10px 20px; font-weight: 800; font-size: 0.8rem;
+          border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          display: flex; align-items: center; gap: 8px; z-index: 100;
+      }
 
       .g-signin-button {
         display: inline-flex; align-items: center; justify-content: center;
@@ -188,6 +195,9 @@ export class UIManager {
     if (container) {
         container.innerHTML = `
             <model-viewer src="${url}" ar ar-modes="webxr scene-viewer quick-look" camera-controls touch-action="pan-y" alt="A 3D model" shadow-intensity="1">
+                <button slot="ar-button" class="antinna-ar-button">
+                   <span>📷</span> View in your space (AR)
+                </button>
                 <div slot="progress-bar"></div>
             </model-viewer>
         `;
