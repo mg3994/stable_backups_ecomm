@@ -32,7 +32,7 @@ export class OrderSummaryRenderer {
             return `
                 <div style="display:flex; justify-content:space-between; font-size:0.75rem; opacity:0.7; padding-left:15px; margin-top:4px;">
                     <span>+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)} <b>x${addon.orderQuantity}</b></span>
-                    <span>${aCurrency} ${(parseFloat(aPrice) * Number(addon.orderQuantity)).toFixed(2)}</span>
+                    <span>${SchemaExtractor.getCurrencySymbol(aCurrency)}${(parseFloat(aPrice) * Number(addon.orderQuantity)).toFixed(2)}</span>
                 </div>
             `;
         }).join('');
@@ -41,7 +41,7 @@ export class OrderSummaryRenderer {
             <div style="padding:10px 0; border-bottom:1px solid #eee; font-size:0.9rem;">
                 <div style="display:flex; justify-content:space-between;">
                     <span style="flex:1;">${name} <b>x${qty}</b></span>
-                    <span style="font-weight:700;">${currency} ${(parseFloat(price) * Number(qty)).toFixed(2)}</span>
+                    <span style="font-weight:700;">${SchemaExtractor.getCurrencySymbol(currency)}${(parseFloat(price) * Number(qty)).toFixed(2)}</span>
                 </div>
                 ${addOnsHtml}
                 ${bookingReq ? `<div style="font-size:0.75rem; color:var(--accent); margin-top:2px;">Booking: ${bookingReq}</div>` : ''}
@@ -102,7 +102,7 @@ export class OrderSummaryRenderer {
 
         <div style="display:flex; justify-content:space-between; font-weight:900; font-size:1.2rem; margin:20px 0;">
             <span>Grand Total</span>
-            <span>${order.priceCurrency || 'INR'} ${order.totalPrice || 0}</span>
+            <span>${SchemaExtractor.getCurrencySymbol(order.priceCurrency || 'INR')}${order.totalPrice || 0}</span>
         </div>
 
         <div id="google-pay-button-container" style="display:flex; justify-content:center; margin-top:20px;"></div>

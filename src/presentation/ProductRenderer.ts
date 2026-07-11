@@ -36,7 +36,8 @@ export class ProductRenderer {
         const priceEl = UIManager.el("p-price");
         if (priceEl && offer) {
           const { price, currency } = SchemaExtractor.extractPrice(offer);
-          priceEl.textContent = `${currency} ${price}`;
+          const symbol = SchemaExtractor.getCurrencySymbol(currency);
+          priceEl.textContent = `${symbol}${price}`;
           const availability = SchemaExtractor.extractAvailability(offer);
           priceEl.classList.toggle("blurry", availability === "https://schema.org/OutOfStock");
         }
@@ -306,7 +307,8 @@ export class ProductRenderer {
           btn.innerHTML = `${itemName}<br/><small>${itemCurrency || "INR"} ${itemPrice}</small>`;
           btn.onclick = () => {
             state.selectedPackage = off;
-            UIManager.setContent('p-price', `${SchemaExtractor.getFirst(off.priceCurrency)} ${SchemaExtractor.getFirst(off.price)}`);
+            const symbol = SchemaExtractor.getCurrencySymbol(SchemaExtractor.getFirst(off.priceCurrency));
+            UIManager.setContent('p-price', `${symbol}${SchemaExtractor.getFirst(off.price)}`);
             this.renderQuantityConstraints(off);
             document.querySelectorAll('.v-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -496,7 +498,8 @@ export class ProductRenderer {
         const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
         const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
         const sellerJson = JSON.stringify(s).replace(/"/g, '&quot;');
-        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
+        const symbol = SchemaExtractor.getCurrencySymbol(currency);
+        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? symbol + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
       }).join('');
     } else {
       otherSec.style.display = "none";
@@ -532,6 +535,7 @@ export class ProductRenderer {
           const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
           const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
           const { price, currency } = SchemaExtractor.extractPrice(ser);
+          const symbol = SchemaExtractor.getCurrencySymbol(currency);
           const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
           const inventoryLevel = SchemaExtractor.extractInventoryLevel(ser.offers || ser);
           const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
@@ -540,7 +544,7 @@ export class ProductRenderer {
           return `
             <div class="h-card" style="opacity: ${isParentInCart ? '1' : '0.5'}">
                 <div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div>
-                <div class="price" style="font-size:1.2rem;margin-bottom:15px;">${currency} ${price}</div>
+                <div class="price" style="font-size:1.2rem;margin-bottom:15px;">${symbol}${price}</div>
                 <button class="v-btn ${isParentInCart ? 'active' : ''}" style="width:100%;padding:10px;font-size:0.85rem;"
                     ${isParentInCart ? '' : 'disabled'}
                     onclick="CartManager.addAddOn('${parentKey}', ${itemJson}); CartRenderer.updateUI(); showToast('Addon Added', 'success');">

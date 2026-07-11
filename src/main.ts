@@ -404,7 +404,8 @@ export class App {
             const variants = SchemaExtractor.getArray(data.hasVariant);
             const variant = variants.length > 0 ? variants[0] : data;
             const { price: p, currency } = SchemaExtractor.extractPrice(variant.offers || variant);
-            price.textContent = `${currency} ${p}`;
+            const symbol = SchemaExtractor.getCurrencySymbol(currency);
+            price.textContent = `${symbol}${p}`;
         }
     }
 

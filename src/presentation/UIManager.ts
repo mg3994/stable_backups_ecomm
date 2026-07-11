@@ -112,8 +112,8 @@ export class UIManager {
       }
       .btn-clear-loc:hover { background: rgba(255, 59, 48, 0.2); }
 
-      .condition-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: #e2e8f0; color: #475569; text-transform: uppercase; margin-left: 10px; vertical-align: middle; }
-      html.dark .condition-badge { background: #334155; color: #cbd5e1; }
+      .condition-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 900; background: #f1f5f9; color: #64748b; text-transform: uppercase; border: 1px solid #e2e8f0; margin-left: 10px; vertical-align: middle; letter-spacing: 0.5px; }
+      html.dark .condition-badge { background: #1e293b; color: #94a3b8; border-color: #334155; }
 
       .antinna-3d-active { overflow: hidden !important; height: 100vh; position: fixed; width: 100%; }
       .antinna-3d-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: none; flex-direction: column; touch-action: none; }

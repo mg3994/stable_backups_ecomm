@@ -103,7 +103,7 @@ export class CartRenderer {
             <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px dashed rgba(0,0,0,0.05); margin-top:10px; font-size:0.8rem;">
                <div style="flex:1; opacity:0.8;">
                   <div style="font-weight:600;">+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)}</div>
-                  <div style="color:var(--accent); font-weight:700;">${aCurrency} ${aPrice}</div>
+                  <div style="color:var(--accent); font-weight:700;">${SchemaExtractor.getCurrencySymbol(aCurrency)}${aPrice}</div>
                </div>
                <div style="display:flex; align-items:center; gap:8px;">
                   <button class="qty-btn" style="width:20px; height:20px; font-size:0.7rem;" ${!canDecrease ? 'disabled' : ''} onclick="CartManager.updateAddOnQty(${idx},${aIdx},-1); CartRenderer.showModal();">-</button>
@@ -123,7 +123,7 @@ export class CartRenderer {
                 <div style="font-weight:700;font-size:0.9rem;">${SchemaExtractor.getFirst(item.orderedItem?.name)}</div>
                 ${statusText}
                 ${bookingReq ? `<div style="color:var(--accent); font-size:0.7rem; font-weight:700;">Booking: ${bookingReq}</div>` : ''}
-                <div style="color:var(--accent); font-weight:800; font-size:0.85rem; margin-top:4px;">${currency} ${price}</div>
+                <div style="color:var(--accent); font-weight:800; font-size:0.85rem; margin-top:4px;">${SchemaExtractor.getCurrencySymbol(currency)}${price}</div>
                 <div style="display:flex; align-items:center; gap:12px; margin-top:10px;">
                    <button class="qty-btn" style="width:24px; height:24px; font-size:0.8rem;" ${!isOrderable ? 'disabled' : ''} onclick="CartManager.updateQty(${idx},-1); CartRenderer.showModal();">-</button>
                    <span style="font-weight:800;">${item.orderQuantity || 1}</span>
@@ -140,7 +140,7 @@ export class CartRenderer {
     }).join("") || '<div style="text-align:center; padding:50px; opacity:0.5; font-weight:700;">Bag is empty</div>';
 
     const totalEl = UIManager.el("cart-total-price");
-    if (totalEl) totalEl.textContent = `${order.priceCurrency || 'INR'} ${order.totalPrice || 0}`;
+    if (totalEl) totalEl.textContent = `${SchemaExtractor.getCurrencySymbol(order.priceCurrency || 'INR')}${order.totalPrice || 0}`;
 
     backdrop?.classList.add("active");
     drawer?.classList.add("active");

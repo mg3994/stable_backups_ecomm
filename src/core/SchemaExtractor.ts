@@ -212,6 +212,17 @@ export class SchemaExtractor {
       return `${val} ${unitLabel}`.trim();
   }
 
+  static getCurrencySymbol(currency: string): string {
+      const symbols: Record<string, string> = {
+          'INR': '₹',
+          'USD': '$',
+          'EUR': '€',
+          'GBP': '£',
+          'JPY': '¥'
+      };
+      return symbols[currency.toUpperCase()] || currency;
+  }
+
   static extractCondition(data: any): string | null {
       const obj = Array.isArray(data) ? data[0] : data;
       if (!obj) return null;
