@@ -217,12 +217,12 @@ export class ProductRenderer {
       btn.id = 'view-3d-btn';
       btn.className = 'v-btn';
       btn.style.cssText = `
-        position: absolute; bottom: 20px; right: 20px; z-index: 20;
+        margin-top: 15px; width: 100%;
         background: rgba(0,0,0,0.8); color: #fff; border: none;
-        padding: 10px 18px; border-radius: 30px; font-weight: 700;
-        display: flex; align-items: center; gap: 8px; font-size: 0.85rem;
+        padding: 12px 20px; border-radius: 12px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem;
       `;
-      btn.innerHTML = `<span>📦</span> View in 3D`;
+      btn.innerHTML = `<span>📦</span> View in 3D Preview`;
       btn.onclick = () => UIManager.show3DViewer(url);
       container.appendChild(btn);
   }
