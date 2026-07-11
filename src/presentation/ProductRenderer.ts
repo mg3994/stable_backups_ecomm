@@ -47,6 +47,9 @@ export class ProductRenderer {
         const imgs = Array.isArray(variant.image || p.image) ? (variant.image || p.image) : [variant.image || p.image];
         this.renderCarousel(imgs.filter(Boolean));
 
+        const modelUrl = SchemaExtractor.extract3DModel(variant) || SchemaExtractor.extract3DModel(p);
+        this.render3DButton(modelUrl);
+
         this.renderQuantityConstraints(offer);
         this.renderVariants(p, state, onVariantChange);
         this.renderSpecs(variant, p);
@@ -201,6 +204,29 @@ export class ProductRenderer {
     inner.style.transform = "translateX(0)";
   }
 
+  private render3DButton(url: string | null): void {
+      const container = UIManager.query('.carousel-container');
+      if (!container) return;
+
+      const existing = UIManager.el('view-3d-btn');
+      if (existing) existing.remove();
+
+      if (!url) return;
+
+      const btn = document.createElement('button');
+      btn.id = 'view-3d-btn';
+      btn.className = 'v-btn';
+      btn.style.cssText = `
+        position: absolute; bottom: 20px; right: 20px; z-index: 20;
+        background: rgba(0,0,0,0.8); color: #fff; border: none;
+        padding: 10px 18px; border-radius: 30px; font-weight: 700;
+        display: flex; align-items: center; gap: 8px; font-size: 0.85rem;
+      `;
+      btn.innerHTML = `<span>📦</span> View in 3D`;
+      btn.onclick = () => UIManager.show3DViewer(url);
+      container.appendChild(btn);
+  }
+
   private renderVariants(p: any, state: AppState, onVariantChange: (attr: string, val: string) => void): void {
     const vc = UIManager.el("p-variants");
     if (vc && !vc.children.length) {
@@ -320,9 +346,25 @@ export class ProductRenderer {
         'Brand': getVal(variant.brand || p.brand),
         'Manufacturer': getVal(variant.manufacturer || p.manufacturer),
         'Material': getVal(variant.material || p.material),
+        'Pattern': getVal(variant.pattern || p.pattern),
         'GTIN': variant.gtin13 || variant.gtin8 || variant.gtin14 || variant.gtin || '',
         'Weight': (variant.weight || p.weight)?.value || (variant.weight || p.weight)
       };
+
+      // Audience & Age
+      const audience = SchemaExtractor.getFirst(variant.audience || p.audience);
+      if (audience) {
+          const audienceName = getVal(audience.name || audience);
+          const suggestedAge = getVal(audience.suggestedAge?.name || audience.suggestedAge?.value || audience.suggestedAge);
+          if (audienceName) flds['Audience'] = audienceName;
+          if (suggestedAge) flds['Suggested Age'] = suggestedAge;
+      }
+
+      // Certifications
+      const certs = SchemaExtractor.getArray(variant.hasCertification || p.hasCertification);
+      if (certs.length > 0) {
+          flds['Certifications'] = certs.map(c => getVal(c.name || c.certificationName || c)).join(', ');
+      }
 
       let h = '';
       for (let [l, k] of Object.entries(flds)) {

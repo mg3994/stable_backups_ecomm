@@ -238,6 +238,18 @@ export class SchemaExtractor {
       return results;
   }
 
+  static extract3DModel(data: any): string | null {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return null;
+
+      const subjectOf = this.getArray(obj.subjectOf);
+      const model = subjectOf.find(s => this.getFirst(s["@type"]) === "3DModel");
+      if (!model) return null;
+
+      const encoding = this.getFirst(model.encoding);
+      return this.getFirst(encoding?.contentUrl) || null;
+  }
+
   static extractLeadTime(data: any): number {
       const obj = Array.isArray(data) ? data[0] : data;
       if (!obj) return 0;

@@ -112,6 +112,13 @@ export class UIManager {
       }
       .btn-clear-loc:hover { background: rgba(255, 59, 48, 0.2); }
 
+      .antinna-3d-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: none; flex-direction: column; }
+      .antinna-3d-backdrop.active { display: flex; }
+      .antinna-3d-header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); color: #fff; }
+      .antinna-3d-close { background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; opacity: 0.8; }
+      #antinna-3d-container { flex: 1; width: 100%; position: relative; }
+      #antinna-3d-container model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
+
       .g-signin-button {
         display: inline-flex; align-items: center; justify-content: center;
         background: #131314; color: #E3E3E3;
@@ -125,6 +132,17 @@ export class UIManager {
       .g-signin-button .g-text { padding: 0 12px; }
     `;
     document.head.appendChild(style);
+  }
+
+  static injectModelViewer(): Promise<void> {
+    return new Promise((resolve) => {
+        if (document.querySelector('script[src*="model-viewer"]')) return resolve();
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js';
+        script.onload = () => resolve();
+        document.head.appendChild(script);
+    });
   }
 
   static injectLeaflet(): Promise<void> {
@@ -141,6 +159,37 @@ export class UIManager {
         script.onload = () => resolve();
         document.head.appendChild(script);
     });
+  }
+
+  static async show3DViewer(url: string): Promise<void> {
+    this.injectModalStyles();
+    await this.injectModelViewer();
+
+    let backdrop = this.el('antinna-3d-modal');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'antinna-3d-modal';
+        backdrop.className = 'antinna-3d-backdrop';
+        backdrop.innerHTML = `
+            <div class="antinna-3d-header">
+                <h3 style="margin:0;">3D Model Preview</h3>
+                <button class="antinna-3d-close" onclick="document.getElementById('antinna-3d-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div id="antinna-3d-container"></div>
+        `;
+        document.body.appendChild(backdrop);
+    }
+
+    const container = this.el('antinna-3d-container');
+    if (container) {
+        container.innerHTML = `
+            <model-viewer src="${url}" ar ar-modes="webxr scene-viewer quick-look" camera-controls touch-action="pan-y" alt="A 3D model" shadow-intensity="1">
+                <div slot="progress-bar"></div>
+            </model-viewer>
+        `;
+    }
+
+    backdrop.classList.add('active');
   }
 
   static showToast(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
