@@ -42,6 +42,7 @@ export class ProductRenderer {
         }
 
         this.renderStockBadge(offer);
+        this.renderConditionBadge(variant || p);
         this.renderAreaServed(p as Service);
 
         const imgs = Array.isArray(variant.image || p.image) ? (variant.image || p.image) : [variant.image || p.image];
@@ -84,6 +85,23 @@ export class ProductRenderer {
       this.renderCarousel(Array.isArray(b.image) ? b.image : [b.image]);
       this.renderSeller(b);
       this.renderOtherServices(b, b);
+  }
+
+  private renderConditionBadge(data: any): void {
+      const container = UIManager.el('stock-badge-container');
+      if (!container) return;
+
+      const condition = SchemaExtractor.extractCondition(data);
+      const existing = UIManager.el('p-condition-badge');
+      if (existing) existing.remove();
+
+      if (condition) {
+          const badge = document.createElement('span');
+          badge.id = 'p-condition-badge';
+          badge.className = 'condition-badge';
+          badge.textContent = condition;
+          container.appendChild(badge);
+      }
   }
 
   private renderStockBadge(offer: Offer): void {

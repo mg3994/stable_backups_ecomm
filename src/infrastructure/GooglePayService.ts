@@ -68,6 +68,31 @@ export class GooglePayService {
     const supportedInstruments = [googlePayUPI, googlePayGlobal];
 
     const orderTyped = order as any;
+    const displayItems: any[] = [];
+
+    SchemaExtractor.getArray(order.orderedItem).forEach((item: any) => {
+        const { price } = SchemaExtractor.extractPrice(item.orderedItem?.offers);
+        displayItems.push({
+            label: `${SchemaExtractor.getFirst(item.orderedItem?.name)} (x${item.orderQuantity})`,
+            amount: {
+                currency: orderTyped.priceCurrency || 'INR',
+                value: String((parseFloat(price) * (item.orderQuantity || 1)).toFixed(2)),
+            },
+        });
+
+        // Add Addons to Google Pay summary
+        SchemaExtractor.getArray(item.addOns).forEach((addon: any) => {
+            const { price: aPrice } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
+            displayItems.push({
+                label: `  + ${SchemaExtractor.getFirst(addon.orderedItem?.name)} (x${addon.orderQuantity})`,
+                amount: {
+                    currency: orderTyped.priceCurrency || 'INR',
+                    value: String((parseFloat(aPrice) * (addon.orderQuantity || 1)).toFixed(2)),
+                },
+            });
+        });
+    });
+
     const details = {
       total: {
         label: 'Total Amount',
@@ -76,16 +101,7 @@ export class GooglePayService {
           value: String(orderTyped.totalPrice),
         },
       },
-      displayItems: SchemaExtractor.getArray(order.orderedItem).map((item: any) => {
-        const { price } = SchemaExtractor.extractPrice(item.orderedItem?.offers);
-        return {
-          label: SchemaExtractor.getFirst(item.orderedItem?.name) || 'Product',
-          amount: {
-            currency: orderTyped.priceCurrency || 'INR',
-            value: String(parseFloat(price) * (item.orderQuantity || 1)),
-          },
-        };
-      }),
+      displayItems,
     };
 
     try {

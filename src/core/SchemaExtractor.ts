@@ -212,6 +212,27 @@ export class SchemaExtractor {
       return `${val} ${unitLabel}`.trim();
   }
 
+  static extractCondition(data: any): string | null {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return null;
+
+      const cond = this.getFirst(obj.itemCondition) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.offers?.itemCondition) ||
+                   this.getFirst(this.getArray(obj.itemOffered)[0]?.itemCondition) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.itemCondition) ||
+                   this.getFirst(this.getArray(obj.offers)[0]?.itemOffered?.itemCondition);
+
+      if (!cond) return null;
+
+      const str = String(cond).toLowerCase();
+      if (str.includes("newcondition")) return "New";
+      if (str.includes("refurbishedcondition")) return "Refurbished";
+      if (str.includes("usedcondition")) return "Used";
+      if (str.includes("damagedcondition")) return "Damaged";
+
+      return str.split('/').pop() || str;
+  }
+
   static extractAreaServed(data: any): any[] {
       const results: any[] = [];
       const stack = [data];

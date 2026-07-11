@@ -112,9 +112,13 @@ export class UIManager {
       }
       .btn-clear-loc:hover { background: rgba(255, 59, 48, 0.2); }
 
-      .antinna-3d-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: none; flex-direction: column; }
+      .condition-badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: #e2e8f0; color: #475569; text-transform: uppercase; margin-left: 10px; vertical-align: middle; }
+      html.dark .condition-badge { background: #334155; color: #cbd5e1; }
+
+      .antinna-3d-active { overflow: hidden !important; height: 100vh; position: fixed; width: 100%; }
+      .antinna-3d-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: none; flex-direction: column; touch-action: none; }
       .antinna-3d-backdrop.active { display: flex; }
-      .antinna-3d-header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); color: #fff; }
+      .antinna-3d-header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); color: #fff; touch-action: auto; }
       .antinna-3d-close { background: none; border: none; color: #fff; font-size: 2rem; cursor: pointer; opacity: 0.8; }
       #antinna-3d-container { flex: 1; width: 100%; position: relative; }
       #antinna-3d-container model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
@@ -173,7 +177,7 @@ export class UIManager {
         backdrop.innerHTML = `
             <div class="antinna-3d-header">
                 <h3 style="margin:0;">3D Model Preview</h3>
-                <button class="antinna-3d-close" onclick="document.getElementById('antinna-3d-modal').classList.remove('active')">&times;</button>
+                <button class="antinna-3d-close" onclick="UIManager.hide3DViewer()">&times;</button>
             </div>
             <div id="antinna-3d-container"></div>
         `;
@@ -190,6 +194,17 @@ export class UIManager {
     }
 
     backdrop.classList.add('active');
+    document.body.classList.add('antinna-3d-active');
+  }
+
+  static hide3DViewer(): void {
+      const backdrop = this.el('antinna-3d-modal');
+      if (backdrop) {
+          backdrop.classList.remove('active');
+          document.body.classList.remove('antinna-3d-active');
+          const container = this.el('antinna-3d-container');
+          if (container) container.innerHTML = ''; // Stop the model viewer
+      }
   }
 
   static showToast(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
