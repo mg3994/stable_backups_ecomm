@@ -1,6 +1,11 @@
 export class AppsScriptService {
   private static instance: AppsScriptService;
-  private url: string = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+  // Specific endpoint for Map/Geo services via Apps Script
+  private mapUrl: string = 'https://script.google.com/macros/s/AKfycbyca4Xz_AE6Om1okIMf0TQ9EE9uIifQcVZhsDwnZK0K4weG7VD0w3jEzM0aCcuBeoWIIA/exec';
+
+  // Production API for orders, payments, and notifications (Cloudflare Workers)
+  private apiUrl: string = 'https://api.antinna.in';
 
   public static getInstance(): AppsScriptService {
     if (!AppsScriptService.instance) {
@@ -9,52 +14,35 @@ export class AppsScriptService {
     return AppsScriptService.instance;
   }
 
-  public setUrl(url: string): void {
-    this.url = url;
+  public setMapUrl(url: string): void {
+    this.mapUrl = url;
   }
 
   private async callAction<T>(action: string, params: any = {}, extra: any = {}): Promise<T> {
-    if (this.url === 'YOUR_APPS_SCRIPT_URL_HERE') {
-      console.warn("Apps Script URL not set. Using dummy response.");
-      return this.getDummyResponse(action, params) as T;
-    }
+    const isMapAction = ['getPlaceSuggestions', 'processLocationAndMetrics', 'processPinDropMetrics'].includes(action);
+    const targetUrl = isMapAction ? this.mapUrl : `${this.apiUrl}/services`;
 
     const payload = {
       action,
       params,
-      authToken: (window as any).firebaseAuthToken,
+      authToken: (window as any).firebaseAuthToken || (window as any).firebaseAuth?.currentUser?.accessToken,
+      clientId: localStorage.getItem('antinna_client_id'),
       ...extra
     };
 
     try {
-      await fetch(this.url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      // Note: with 'no-cors', we can't actually read the response body in the browser.
-      // This is a known limitation of Apps Script Web Apps when called from different origins.
-      // Usually, a JSONP approach or a proxy is needed if CORS is required.
-      // For this engine, we'll assume the user might use a CORS-friendly proxy or
-      // we'll handle the 'no-cors' behavior if appropriate.
-
-      // If we need the data, we actually need to allow CORS on the server or use a redirect trick.
-      // Assuming for now the user will provide a URL that handles CORS or we use a different approach.
-
-      // Re-trying with standard fetch if no-cors isn't strictly necessary or if the user handles it.
-      const corsResponse = await fetch(this.url, {
+      const response = await fetch(targetUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
       });
-      return await corsResponse.json();
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
 
     } catch (e) {
       console.error(`AppsScriptService error [${action}]:`, e);
+      // Fallback for Map actions if Apps Script CORS issues occur (usually handled by SS redirect)
       throw e;
     }
   }
@@ -73,6 +61,10 @@ export class AppsScriptService {
 
   public async createOrder(order: any): Promise<any> {
     return this.callAction<any>('createOrder', {}, { order });
+  }
+
+  public async recordPayment(paymentData: any): Promise<any> {
+      return this.callAction<any>('recordPayment', paymentData);
   }
 
   private getDummyResponse(action: string, params: any): any {
