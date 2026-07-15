@@ -78,12 +78,30 @@ function calculateMatrixMetrics(originLat, originLng, targetLat, targetLng, targ
       duration = route.duration.text;
     }
 
+    // Try to extract structured address components for the target
+    var city = "";
+    var postalCode = "";
+    try {
+        const reverse = Maps.newGeocoder().reverseGeocode(targetLat, targetLng);
+        if (reverse.results && reverse.results.length > 0) {
+            const addr = reverse.results[0].address_components;
+            addr.forEach(c => {
+                if (c.types.includes("locality")) city = c.long_name;
+                if (c.types.includes("postal_code")) postalCode = c.long_name;
+            });
+        }
+    } catch (e) {}
+
     return jsonSuccess({
       address: targetAddress,
       lat: targetLat,
       lng: targetLng,
       distance: distance,
-      duration: duration
+      duration: duration,
+      addressDetails: {
+          addressLocality: city,
+          postalCode: postalCode
+      }
     });
   } catch (e) {
     return jsonError("Matrix calculation failed");

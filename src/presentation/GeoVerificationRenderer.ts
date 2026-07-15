@@ -327,8 +327,12 @@ export class GeoVerificationRenderer {
           form.style.display = "block";
           if (response.addressDetails) {
               const d = response.addressDetails;
-              UIManager.el<HTMLInputElement>('geo-extendedAddress')!.value = d.extendedAddress || "";
-              UIManager.el<HTMLInputElement>('geo-streetAddress')!.value = d.streetAddress || "";
+              // Only overwrite building/street if they are currently empty
+              const extInput = UIManager.el<HTMLInputElement>('geo-extendedAddress')!;
+              const streetInput = UIManager.el<HTMLInputElement>('geo-streetAddress')!;
+              if (!extInput.value) extInput.value = d.extendedAddress || "";
+              if (!streetInput.value) streetInput.value = d.streetAddress || "";
+
               UIManager.el<HTMLInputElement>('geo-locality')!.value = d.addressLocality || "";
               UIManager.el<HTMLInputElement>('geo-postalCode')!.value = d.postalCode || "";
           }
