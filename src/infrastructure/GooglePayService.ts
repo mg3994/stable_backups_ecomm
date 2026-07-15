@@ -11,10 +11,10 @@ export class GooglePayService {
       return;
     }
 
-    // Call dummy backend to create order record
+    // Call backend to create order record
     try {
-        const { AppsScriptService } = await import('./AppsScriptService');
-        await AppsScriptService.getInstance().createOrder({
+        const { ProductionApiService } = await import('./ProductionApiService');
+        await ProductionApiService.getInstance().createOrder({
             ...order,
             verifiedLocation
         });

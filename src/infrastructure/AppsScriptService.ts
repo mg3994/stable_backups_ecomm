@@ -4,9 +4,6 @@ export class AppsScriptService {
   // Specific endpoint for Map/Geo services via Apps Script
   private mapUrl: string = 'https://script.google.com/macros/s/AKfycbyca4Xz_AE6Om1okIMf0TQ9EE9uIifQcVZhsDwnZK0K4weG7VD0w3jEzM0aCcuBeoWIIA/exec';
 
-  // Production API for orders, payments, and notifications (Cloudflare Workers)
-  private apiUrl: string = 'https://api.antinna.in';
-
   public static getInstance(): AppsScriptService {
     if (!AppsScriptService.instance) {
       AppsScriptService.instance = new AppsScriptService();
@@ -18,22 +15,13 @@ export class AppsScriptService {
     this.mapUrl = url;
   }
 
-  private async callAction<T>(action: string, params: any = {}, extra: any = {}): Promise<T> {
-    const isMapAction = ['getPlaceSuggestions', 'processLocationAndMetrics', 'processPinDropMetrics'].includes(action);
-    const targetUrl = isMapAction ? this.mapUrl : `${this.apiUrl}/services`;
-
-    const payload = {
-      action,
-      params,
-      authToken: (window as any).firebaseAuthToken || (window as any).firebaseAuth?.currentUser?.accessToken,
-      clientId: localStorage.getItem('antinna_client_id'),
-      ...extra
-    };
+  private async callAction<T>(action: string, params: any = {}): Promise<T> {
+    const payload = { action, params };
 
     try {
-      const response = await fetch(targetUrl, {
+      const response = await fetch(this.mapUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
       });
 
@@ -42,13 +30,13 @@ export class AppsScriptService {
 
     } catch (e) {
       console.error(`AppsScriptService error [${action}]:`, e);
-      // Fallback for Map actions if Apps Script CORS issues occur (usually handled by SS redirect)
       throw e;
     }
   }
 
   public async getPlaceSuggestions(inputToken: string): Promise<string[]> {
-    return this.callAction<string[]>('getPlaceSuggestions', { inputToken });
+    const res = await this.callAction<any>('getPlaceSuggestions', { inputToken });
+    return res.suggestions || [];
   }
 
   public async processLocationAndMetrics(originLat: number, originLng: number, destinationQuery: string): Promise<any> {
@@ -57,14 +45,6 @@ export class AppsScriptService {
 
   public async processPinDropMetrics(originLat: number, originLng: number, pinLat: number, pinLng: number): Promise<any> {
     return this.callAction<any>('processPinDropMetrics', { originLat, originLng, pinLat, pinLng });
-  }
-
-  public async createOrder(order: any): Promise<any> {
-    return this.callAction<any>('createOrder', {}, { order });
-  }
-
-  public async recordPayment(paymentData: any): Promise<any> {
-      return this.callAction<any>('recordPayment', paymentData);
   }
 
   private getDummyResponse(action: string, params: any): any {
