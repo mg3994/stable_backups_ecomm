@@ -9,44 +9,39 @@ export class ProductionApiService {
     return ProductionApiService.instance;
   }
 
-  private async callAction<T>(action: string, params: any = {}, extra: any = {}): Promise<T> {
-    const payload = {
-      action,
-      params,
-      authToken: (window as any).firebaseAuthToken || (window as any).firebaseAuth?.currentUser?.accessToken,
-      clientId: localStorage.getItem('antinna_client_id'),
-      ...extra
+  private async request<T>(method: 'GET' | 'POST', path: string, body: any = null): Promise<T> {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Antinna-Client-Id': localStorage.getItem('antinna_client_id') || '',
+        'Authorization': `Bearer ${(window as any).firebaseAuthToken || (window as any).firebaseAuth?.currentUser?.accessToken || ''}`
     };
 
+    const options: RequestInit = { method, headers };
+    if (body) options.body = JSON.stringify(body);
+
     try {
-      const response = await fetch(`${this.baseUrl}/services`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const response = await fetch(`${this.baseUrl}${path}`, options);
+      if (!response.ok) throw new Error(`API error! status: ${response.status}`);
       return await response.json();
-
     } catch (e) {
-      console.error(`ProductionApiService error [${action}]:`, e);
+      console.error(`ProductionApiService error [${path}]:`, e);
       throw e;
     }
   }
 
   public async createOrder(order: any): Promise<any> {
-    return this.callAction<any>('createOrder', {}, { order });
+    return this.request<any>('POST', '/orders', order);
   }
 
   public async recordPayment(paymentData: any): Promise<any> {
-    return this.callAction<any>('recordPayment', paymentData);
+    return this.request<any>('POST', '/payments', paymentData);
   }
 
   public async isOrderPaid(orderId: string): Promise<any> {
-    return this.callAction<any>('isOrderPaid', { orderId });
+    return this.request<any>('GET', `/orders/${orderId}/status`);
   }
 
   public async listNotifications(page: number = 1, pageSize: number = 20): Promise<any> {
-    return this.callAction<any>('listNotifications', { page, pageSize });
+    return this.request<any>('GET', `/notifications?page=${page}&pageSize=${pageSize}`);
   }
 }

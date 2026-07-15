@@ -245,6 +245,7 @@ export class GeoVerificationRenderer {
     UIManager.setContent('antinna-geo-status', "Pin dropped. Computing metrics...");
 
     try {
+      // GAS expects originLng/pinLng
       const response = await this.appsScriptService.processPinDropMetrics(this.currentDeviceLat, this.currentDeviceLng, lat, lng);
       this.updateTelemetryUI(response);
     } catch (e) {
@@ -293,7 +294,7 @@ export class GeoVerificationRenderer {
 
         try {
           const response = await this.appsScriptService.processLocationAndMetrics(this.currentDeviceLat, this.currentDeviceLng, text);
-          if (response.status === "success") {
+          if (response.success) {
             const newPos: [number, number] = [response.lat, response.lng];
             this.map.setView(newPos, 15);
             this.targetMarker.setLatLng(newPos);
@@ -307,13 +308,15 @@ export class GeoVerificationRenderer {
   }
 
   private updateTelemetryUI(response: any): void {
-    if (response.status === "success") {
+    if (response.success) {
       (window as any).lastGeoResponse = response;
       UIManager.setContent('antinna-geo-status', "Location verified.");
       UIManager.setContent('antinna-geo-clean-address', response.address);
       UIManager.setContent('antinna-geo-dist', response.distance);
       UIManager.setContent('antinna-geo-dur', response.duration);
-      UIManager.setContent('antinna-geo-tag-target', `${response.lat.toFixed(4)}, ${response.lng.toFixed(4)}`);
+      const targetLat = Number(response.lat || 0);
+      const targetLng = Number(response.lng || response.lon || 0);
+      UIManager.setContent('antinna-geo-tag-target', `${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`);
       UIManager.setContent('antinna-geo-tag-current', `${this.currentDeviceLat.toFixed(4)}, ${this.currentDeviceLng.toFixed(4)}`);
 
       UIManager.toggleClass("#antinna-geo-metrics", "hidden", false);

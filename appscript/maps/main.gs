@@ -42,7 +42,10 @@ function handleLocationAndMetrics(params) {
     if (!geocode.results || geocode.results.length === 0) throw new Error("Unresolved address");
 
     const result = geocode.results[0];
-    return calculateMatrixMetrics(params.originLat, params.originLng, result.geometry.location.lat, result.geometry.location.lng, result.formatted_address);
+    const targetLat = result.geometry.location.lat;
+    const targetLng = result.geometry.location.lng;
+
+    return calculateMatrixMetrics(params.originLat, params.originLng, targetLat, targetLng, result.formatted_address);
   } catch (e) {
     return jsonError(e.toString());
   }
@@ -51,7 +54,7 @@ function handleLocationAndMetrics(params) {
 function handlePinDropMetrics(params) {
   try {
     const response = Maps.newGeocoder().reverseGeocode(params.pinLat, params.pinLng);
-    let address = `Pinned Location (${params.pinLat.toFixed(4)}, ${params.pinLng.toFixed(4)})`;
+    let address = "Pinned Location (" + params.pinLat.toFixed(4) + ", " + params.pinLng.toFixed(4) + ")";
     if (response.results && response.results.length > 0) address = response.results[0].formatted_address;
 
     return calculateMatrixMetrics(params.originLat, params.originLng, params.pinLat, params.pinLng, address);

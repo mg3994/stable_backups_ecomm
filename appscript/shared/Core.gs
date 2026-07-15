@@ -31,12 +31,12 @@ function parseRequestPayload(e) {
 }
 
 function jsonSuccess(data) {
-  return ContentService.createTextOutput(JSON.stringify({ status: "success", ...data }))
+  return ContentService.createTextOutput(JSON.stringify({ success: true, ...data }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function jsonError(message) {
-  return ContentService.createTextOutput(JSON.stringify({ status: "error", message: message }))
+  return ContentService.createTextOutput(JSON.stringify({ success: false, error: message }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

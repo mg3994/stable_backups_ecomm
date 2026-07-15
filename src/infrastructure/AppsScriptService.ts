@@ -19,6 +19,7 @@ export class AppsScriptService {
     const payload = { action, params };
 
     try {
+      // Use text/plain for GAS to avoid CORS preflight (OPTIONS) which GAS doesn't support
       const response = await fetch(this.mapUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -35,8 +36,12 @@ export class AppsScriptService {
   }
 
   public async getPlaceSuggestions(inputToken: string): Promise<string[]> {
-    const res = await this.callAction<any>('getPlaceSuggestions', { inputToken });
-    return res.suggestions || [];
+    try {
+        const res = await this.callAction<any>('getPlaceSuggestions', { inputToken });
+        return res.success ? res.suggestions : [];
+    } catch (e) {
+        return [];
+    }
   }
 
   public async processLocationAndMetrics(originLat: number, originLng: number, destinationQuery: string): Promise<any> {
@@ -45,31 +50,5 @@ export class AppsScriptService {
 
   public async processPinDropMetrics(originLat: number, originLng: number, pinLat: number, pinLng: number): Promise<any> {
     return this.callAction<any>('processPinDropMetrics', { originLat, originLng, pinLat, pinLng });
-  }
-
-  private getDummyResponse(action: string, params: any): any {
-      switch(action) {
-          case 'getPlaceSuggestions': return ["123 Main St, New York, NY", "456 Park Ave, New York, NY", "789 Broadway, New York, NY"];
-          case 'processLocationAndMetrics':
-          case 'processPinDropMetrics':
-              return {
-                  status: "success",
-                  address: params.destinationQuery || "Mock Address, India",
-                  lat: params.pinLat || 28.6139,
-                  lng: params.pinLng || 77.2090,
-                  distance: "15.5 km",
-                  duration: "35 mins",
-                  addressDetails: {
-                      extendedAddress: "3rd Floor, Plot No. 42, ABC Towers",
-                      streetAddress: "Sector 14",
-                      addressLocality: "Rohtak",
-                      addressRegion: "HR",
-                      postalCode: "124001",
-                      addressCountry: "IN"
-                  }
-              };
-          case 'createOrder': return { status: "success", orderId: "ANT-MOCK-123", message: "Mock order created" };
-          default: return { status: "error", message: "Unknown action" };
-      }
   }
 }
