@@ -9,6 +9,7 @@ export class GeoVerificationRenderer {
   private appsScriptService = AppsScriptService.getInstance();
   private currentDeviceLat: number = 28.6139; // Default (Delhi)
   private currentDeviceLng: number = 77.2090;
+  private isAddressModified: boolean = false;
 
   constructor(locationManager: LocationManager) {
     const loc = locationManager.getData();
@@ -101,7 +102,10 @@ export class GeoVerificationRenderer {
     const formInputs = ['geo-extendedAddress', 'geo-streetAddress', 'geo-postalCode'];
     formInputs.forEach(id => {
         const el = UIManager.el(id);
-        if (el) el.oninput = () => this.validateAddressForm();
+        if (el) el.oninput = () => {
+            if (id !== 'geo-postalCode') this.isAddressModified = true;
+            this.validateAddressForm();
+        };
     });
 
     document.addEventListener('click', (e) => {
@@ -293,6 +297,7 @@ export class GeoVerificationRenderer {
         UIManager.setContent('antinna-geo-status', "Resolving coordinates...");
 
         try {
+          this.isAddressModified = false; // Reset on new search selection
           const response = await this.appsScriptService.processLocationAndMetrics(this.currentDeviceLat, this.currentDeviceLng, text);
           if (response.success) {
             const newPos: [number, number] = [response.lat, response.lng];
@@ -327,11 +332,13 @@ export class GeoVerificationRenderer {
           form.style.display = "block";
           if (response.addressDetails) {
               const d = response.addressDetails;
-              // Only overwrite building/street if they are currently empty
               const extInput = UIManager.el<HTMLInputElement>('geo-extendedAddress')!;
               const streetInput = UIManager.el<HTMLInputElement>('geo-streetAddress')!;
-              if (!extInput.value) extInput.value = d.extendedAddress || "";
-              if (!streetInput.value) streetInput.value = d.streetAddress || "";
+
+              if (!this.isAddressModified) {
+                  extInput.value = d.extendedAddress || "";
+                  streetInput.value = d.streetAddress || "";
+              }
 
               UIManager.el<HTMLInputElement>('geo-locality')!.value = d.addressLocality || "";
               UIManager.el<HTMLInputElement>('geo-postalCode')!.value = d.postalCode || "";
