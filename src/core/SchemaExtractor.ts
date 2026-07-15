@@ -191,6 +191,24 @@ export class SchemaExtractor {
       return (val !== undefined && val !== null) ? Number(val) : null;
   }
 
+  static extractDimensions(data: any): { weight: number | null, height: number | null, width: number | null, depth: number | null } {
+      const obj = Array.isArray(data) ? data[0] : data;
+      if (!obj) return { weight: null, height: null, width: null, depth: null };
+
+      const getNum = (v: any) => {
+          if (v === undefined || v === null) return null;
+          if (typeof v === 'object') return Number(this.getFirst(v.value)) || null;
+          return Number(v) || null;
+      };
+
+      return {
+          weight: getNum(obj.weight),
+          height: getNum(obj.height),
+          width: getNum(obj.width),
+          depth: getNum(obj.depth)
+      };
+  }
+
   static extractAdvanceBookingRequirement(offer: any): string | null {
       const off = Array.isArray(offer) ? offer[0] : offer;
       if (!off) return null;

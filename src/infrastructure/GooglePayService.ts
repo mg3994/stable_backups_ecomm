@@ -93,6 +93,17 @@ export class GooglePayService {
         });
     });
 
+    // Include delivery destination for context
+    if (verifiedLocation) {
+        displayItems.push({
+            label: `Delivery: ${verifiedLocation.address || 'Verified Location'}`,
+            amount: {
+                currency: orderTyped.priceCurrency || 'INR',
+                value: "0.00",
+            },
+        });
+    }
+
     const details = {
       total: {
         label: 'Total Amount',
