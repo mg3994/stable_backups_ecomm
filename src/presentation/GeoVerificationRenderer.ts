@@ -7,8 +7,8 @@ export class GeoVerificationRenderer {
   private targetMarker: any;
   private debounceTimer: any;
   private appsScriptService = AppsScriptService.getInstance();
-  private currentDeviceLat: number = 28.6139; // Default (Delhi)
-  private currentDeviceLng: number = 77.2090;
+  private currentDeviceLat: number = 28.52785;
+  private currentDeviceLng: number = 76.08361;
   private isAddressModified: boolean = false;
 
   constructor(locationManager: LocationManager) {
