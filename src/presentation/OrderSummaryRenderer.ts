@@ -21,14 +21,14 @@ export class OrderSummaryRenderer {
 
     const itemsHtml = SchemaExtractor.getArray(order.orderedItem).map((item: any) => {
         const itemOffered = item.orderedItem || item.itemOffered || item;
-        const { price, currency } = SchemaExtractor.extractPrice(itemOffered.offers || item.offers);
-        const name = SchemaExtractor.getFirst(itemOffered.name) || "Unnamed Item";
         const qty = item.orderQuantity || item.amount?.value || 1;
+        const { price, currency } = SchemaExtractor.extractPriceForQuantity(itemOffered.offers || item.offers, qty);
+        const name = SchemaExtractor.getFirst(itemOffered.name) || "Unnamed Item";
         const bookingReq = SchemaExtractor.extractAdvanceBookingRequirement(itemOffered.offers || item.offers);
 
         // Render Addons
         const addOnsHtml = SchemaExtractor.getArray(item.addOns).map((addon: any) => {
-            const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
+            const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPriceForQuantity(addon.orderedItem?.offers, addon.orderQuantity || 1);
             return `
                 <div style="display:flex; justify-content:space-between; font-size:0.75rem; opacity:0.7; padding-left:15px; margin-top:4px;">
                     <span>+ ${SchemaExtractor.getFirst(addon.orderedItem?.name)} <b>x${addon.orderQuantity}</b></span>

@@ -89,12 +89,12 @@ export class CartRenderer {
       else if (isOutOfStock) statusText = '<div style="color:orange; font-size:0.7rem; font-weight:800;">Out of Stock</div>';
       else if (!isQuantityValid) statusText = `<div style="color:#ef4444; font-size:0.7rem; font-weight:800;">Minimum ${item._constraints?.minValue} required</div>`;
 
-      const { price, currency } = SchemaExtractor.extractPrice(item.orderedItem?.offers);
+      const { price, currency } = SchemaExtractor.extractPriceForQuantity(item.orderedItem?.offers, item.orderQuantity || 1);
       const bookingReq = SchemaExtractor.extractAdvanceBookingRequirement(item.orderedItem?.offers);
 
       // Render Addons
       const addOnsHtml = SchemaExtractor.getArray(item.addOns).map((addon: any, aIdx: number) => {
-          const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPrice(addon.orderedItem?.offers);
+          const { price: aPrice, currency: aCurrency } = SchemaExtractor.extractPriceForQuantity(addon.orderedItem?.offers, addon.orderQuantity || 1);
           const aLimits = this.cartManager.getAddOnLimits(item, addon);
           const canDecrease = (aLimits.minValue === null) ? addon.orderQuantity > 1 : addon.orderQuantity > aLimits.minValue;
           const canIncrease = (aLimits.maxValue === null) || addon.orderQuantity < aLimits.maxValue;

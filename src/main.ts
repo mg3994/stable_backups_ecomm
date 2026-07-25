@@ -203,6 +203,17 @@ export class App {
     const addBtn = UIManager.el("add-to-cart-btn");
     const searchForm = UIManager.el<HTMLFormElement>("search-form");
 
+    const updateProductPrice = () => {
+        const variant = SchemaExtractor.findMatchingVariant(this.state.product, this.state.selectedVariants, this.state.lastClickedAttribute);
+        const offer = SchemaExtractor.getFirst(variant?.offers || this.state.product?.offers);
+        const priceEl = UIManager.el("p-price");
+        if (priceEl && offer) {
+          const { price, currency } = SchemaExtractor.extractPriceForQuantity(offer, this.state.quantity);
+          const symbol = SchemaExtractor.getCurrencySymbol(currency);
+          priceEl.textContent = `${symbol}${price}`;
+        }
+    };
+
     if (qtyPlus) qtyPlus.onclick = () => {
       const limits = (window as any).currentQuantityLimits;
       if (limits?.maxValue !== null && this.state.quantity >= limits.maxValue) {
@@ -212,6 +223,7 @@ export class App {
       this.state.quantity++;
       UIManager.setContent("qty-val", String(this.state.quantity));
       this.ProductRenderer.updateQtyButtons();
+      updateProductPrice();
     };
 
     if (qtyMinus) qtyMinus.onclick = () => {
@@ -219,6 +231,7 @@ export class App {
         this.state.quantity--;
         UIManager.setContent("qty-val", String(this.state.quantity));
         this.ProductRenderer.updateQtyButtons();
+        updateProductPrice();
       }
     };
 

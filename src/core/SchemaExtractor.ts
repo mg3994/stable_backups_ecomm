@@ -128,8 +128,40 @@ export class SchemaExtractor {
   }
 
   static extractPrice(offer: any): { price: string, currency: string } {
+      return this.extractPriceForQuantity(offer, 1);
+  }
+
+  static extractPriceForQuantity(offer: any, quantity: number): { price: string, currency: string } {
       const off = Array.isArray(offer) ? offer[0] : offer;
       if (!off) return { price: "0", currency: "INR" };
+
+      // Check for priceSpecification
+      const specs = this.getArray(off.priceSpecification ||
+                                   this.getArray(off.itemOffered)[0]?.offers?.priceSpecification ||
+                                   this.getArray(off.offers)[0]?.priceSpecification ||
+                                   this.getArray(off.offers)[0]?.itemOffered?.offers?.priceSpecification);
+
+      if (specs.length > 0) {
+          const matchingSpec = specs.find((spec: any) => {
+              if (this.getFirst(spec["@type"]) !== "UnitPriceSpecification") return false;
+              const eq = this.getFirst(spec.eligibleQuantity);
+              if (!eq) return true; // Default if no quantity specified on this spec
+
+              const min = this.getFirst(eq.minValue);
+              const max = this.getFirst(eq.maxValue);
+
+              const minVal = (min !== undefined && min !== null) ? Number(min) : 0;
+              const maxVal = (max !== undefined && max !== null) ? Number(max) : Infinity;
+
+              return quantity >= minVal && quantity <= maxVal;
+          });
+
+          if (matchingSpec) {
+              const price = this.getFirst(matchingSpec.price) || "0";
+              const currency = this.getFirst(matchingSpec.priceCurrency) || "INR";
+              return { price: String(price), currency: String(currency) };
+          }
+      }
 
       const price = this.getFirst(off.price) ||
                     this.getFirst(this.getArray(off.itemOffered)[0]?.offers?.price) ||

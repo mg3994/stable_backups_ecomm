@@ -54,14 +54,16 @@ export class CartManager {
     const orderedItems = SchemaExtractor.getArray(this.order.orderedItem);
     this.order.totalPrice = orderedItems.reduce((sum: number, item: any) => {
       if (!this.isItemOrderable(item)) return sum;
-      const { price } = SchemaExtractor.extractPrice(item.orderedItem.offers);
-      let itemTotal = parseFloat(price) * (item.orderQuantity || 1);
+      const qty = item.orderQuantity || 1;
+      const { price } = SchemaExtractor.extractPriceForQuantity(item.orderedItem.offers, qty);
+      let itemTotal = parseFloat(price) * qty;
 
       // Add price of addons
       const addOns = SchemaExtractor.getArray(item.addOns);
       addOns.forEach((addon: any) => {
-        const { price: addonPrice } = SchemaExtractor.extractPrice(addon.orderedItem.offers);
-        itemTotal += parseFloat(addonPrice) * (addon.orderQuantity || 0);
+        const addonQty = addon.orderQuantity || 0;
+        const { price: addonPrice } = SchemaExtractor.extractPriceForQuantity(addon.orderedItem.offers, addonQty);
+        itemTotal += parseFloat(addonPrice) * addonQty;
       });
 
       return sum + itemTotal;
@@ -377,6 +379,7 @@ export class CartManager {
               price: price,
               priceCurrency: currency,
               availability: availability,
+              priceSpecification: freshMatch.priceSpecification || freshMatch.offers?.priceSpecification,
               eligibleQuantity: (minValue !== null || maxValue !== null) ? {
                   "@type": "QuantitativeValue",
                   minValue,
@@ -420,6 +423,7 @@ export class CartManager {
                           price: aPrice,
                           priceCurrency: aCurrency,
                           availability: aAvailability,
+                          priceSpecification: addonMatch.priceSpecification || addonMatch.offers?.priceSpecification,
                           eligibleQuantity: (aMin !== null || aMax !== null) ? {
                               "@type": "QuantitativeValue",
                               minValue: aMin,

@@ -36,7 +36,7 @@ export class ProductRenderer {
         const offer = SchemaExtractor.getFirst(variant.offers || p.offers) as Offer;
         const priceEl = UIManager.el("p-price");
         if (priceEl && offer) {
-          const { price, currency } = SchemaExtractor.extractPrice(offer);
+          const { price, currency } = SchemaExtractor.extractPriceForQuantity(offer, state.quantity);
           const symbol = SchemaExtractor.getCurrencySymbol(currency);
           priceEl.textContent = `${symbol}${price}`;
           const availability = SchemaExtractor.extractAvailability(offer);
