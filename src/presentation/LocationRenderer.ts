@@ -14,7 +14,30 @@ export class LocationRenderer {
 
   showModal(): void {
     UIManager.injectModalStyles();
-    UIManager.el('loc-modal-backdrop')?.classList.add('active');
+    const backdrop = UIManager.el('loc-modal-backdrop');
+    if (backdrop) {
+        const data = this.locationManager.getData();
+        const hasLocation = !!(data.pin || data.city);
+
+        let clearBtn = UIManager.el('modal-clear-loc-btn');
+        if (!clearBtn) {
+            const footer = backdrop.querySelector('.antinna-geo-content') || backdrop.querySelector('.modal-content');
+            if (footer) {
+                clearBtn = document.createElement('button');
+                clearBtn.id = 'modal-clear-loc-btn';
+                clearBtn.className = 'btn-clear-loc';
+                clearBtn.innerHTML = 'Clear Location';
+                clearBtn.onclick = () => this.handleClearLocation();
+                footer.appendChild(clearBtn);
+            }
+        }
+
+        if (clearBtn) {
+            clearBtn.style.display = hasLocation ? 'block' : 'none';
+        }
+
+        backdrop.classList.add('active');
+    }
   }
 
   hideModal(): void {
@@ -89,5 +112,12 @@ export class LocationRenderer {
     } else {
       UIManager.showToast("Enter a valid 6-digit PIN", "error");
     }
+  }
+
+  handleClearLocation(): void {
+      this.locationManager.clear();
+      this.updateUI();
+      this.hideModal();
+      UIManager.showToast("Location cleared", "success");
   }
 }

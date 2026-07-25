@@ -7,8 +7,9 @@ export class GeoVerificationRenderer {
   private targetMarker: any;
   private debounceTimer: any;
   private appsScriptService = AppsScriptService.getInstance();
-  private currentDeviceLat: number = 28.6139; // Default (Delhi)
-  private currentDeviceLng: number = 77.2090;
+  private currentDeviceLat: number = 28.52785;
+  private currentDeviceLng: number = 76.08361;
+  private isAddressModified: boolean = false;
 
   constructor(locationManager: LocationManager) {
     const loc = locationManager.getData();
@@ -101,7 +102,10 @@ export class GeoVerificationRenderer {
     const formInputs = ['geo-extendedAddress', 'geo-streetAddress', 'geo-postalCode'];
     formInputs.forEach(id => {
         const el = UIManager.el(id);
-        if (el) el.oninput = () => this.validateAddressForm();
+        if (el) el.oninput = () => {
+            if (id !== 'geo-postalCode') this.isAddressModified = true;
+            this.validateAddressForm();
+        };
     });
 
     document.addEventListener('click', (e) => {
@@ -150,9 +154,9 @@ export class GeoVerificationRenderer {
   }
 
   private collectDeliveryData(): any {
-      const pos = this.targetMarker?.getPosition();
-      const lat = pos ? pos.lat() : ((window as any).lastGeoResponse?.lat || 0);
-      const lng = pos ? pos.lng() : ((window as any).lastGeoResponse?.lng || 0);
+      const pos = this.targetMarker?.getLatLng();
+      const lat = pos ? pos.lat : ((window as any).lastGeoResponse?.lat || 0);
+      const lng = pos ? pos.lng : ((window as any).lastGeoResponse?.lng || 0);
 
       return {
           "@type": "ParcelDelivery",
@@ -182,63 +186,70 @@ export class GeoVerificationRenderer {
       };
   }
 
-  private initMap(): void {
-    if (!(window as any).google || !(window as any).google.maps) {
-        console.warn("Google Maps not loaded yet.");
-        return;
-    }
+  private async initMap(): Promise<void> {
+    await UIManager.injectLeaflet();
+    const L = (window as any).L;
+    if (!L) return;
 
-    const google = (window as any).google;
-    const center = new google.maps.LatLng(this.currentDeviceLat, this.currentDeviceLng);
+    const center: [number, number] = [this.currentDeviceLat, this.currentDeviceLng];
 
     if (!this.map) {
-      const options = {
-        zoom: 13,
-        center: center,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        disableDefaultUI: true,
-        zoomControl: true
+      const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri'
+      });
+      const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}');
+      const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+      });
+
+      this.map = L.map(UIManager.el("antinna-geo-map-canvas"), {
+          layers: [satellite, labels]
+      }).setView(center, 13);
+
+      const baseMaps = {
+          "Satellite Hybrid": L.layerGroup([satellite, labels]),
+          "Streets": streets
       };
-      this.map = new google.maps.Map(UIManager.el("antinna-geo-map-canvas"), options);
+      L.control.layers(baseMaps).addTo(this.map);
 
-      this.targetMarker = new google.maps.Marker({
-        position: center,
-        map: this.map,
+      this.targetMarker = L.marker(center, {
         draggable: true,
-        animation: google.maps.Animation.DROP,
         title: "Delivery Location"
+      }).addTo(this.map);
+
+      this.map.on('click', (e: any) => {
+        this.handleManualPinPosition(e.latlng.lat, e.latlng.lng);
       });
 
-      google.maps.event.addListener(this.map, 'click', (event: any) => {
-        this.handleManualPinPosition(event.latLng.lat(), event.latLng.lng());
-      });
-
-      google.maps.event.addListener(this.targetMarker, 'dragend', (event: any) => {
-        this.handleManualPinPosition(event.latLng.lat(), event.latLng.lng());
+      this.targetMarker.on('dragend', (e: any) => {
+        const pos = e.target.getLatLng();
+        this.handleManualPinPosition(pos.lat, pos.lng);
       });
     } else {
-        this.map.setCenter(center);
-        this.targetMarker.setPosition(center);
+        this.map.setView(center, 13);
+        this.targetMarker.setLatLng(center);
     }
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(pos => {
         this.currentDeviceLat = pos.coords.latitude;
         this.currentDeviceLng = pos.coords.longitude;
-        const loc = new google.maps.LatLng(this.currentDeviceLat, this.currentDeviceLng);
-        this.map.setCenter(loc);
-        this.targetMarker.setPosition(loc);
+        const loc: [number, number] = [this.currentDeviceLat, this.currentDeviceLng];
+        this.map.setView(loc, 13);
+        this.targetMarker.setLatLng(loc);
         UIManager.setContent('antinna-geo-status', "Position synchronized.");
       });
     }
   }
 
   private async handleManualPinPosition(lat: number, lng: number): Promise<void> {
-    const google = (window as any).google;
-    this.targetMarker.setPosition(new google.maps.LatLng(lat, lng));
+    if (this.targetMarker) {
+        this.targetMarker.setLatLng([lat, lng]);
+    }
     UIManager.setContent('antinna-geo-status', "Pin dropped. Computing metrics...");
 
     try {
+      // GAS expects originLng/pinLng
       const response = await this.appsScriptService.processPinDropMetrics(this.currentDeviceLat, this.currentDeviceLng, lat, lng);
       this.updateTelemetryUI(response);
     } catch (e) {
@@ -286,13 +297,12 @@ export class GeoVerificationRenderer {
         UIManager.setContent('antinna-geo-status', "Resolving coordinates...");
 
         try {
+          this.isAddressModified = false; // Reset on new search selection
           const response = await this.appsScriptService.processLocationAndMetrics(this.currentDeviceLat, this.currentDeviceLng, text);
-          if (response.status === "success") {
-            const google = (window as any).google;
-            const newPos = new google.maps.LatLng(response.lat, response.lng);
-            this.map.setCenter(newPos);
-            this.map.setZoom(15);
-            this.targetMarker.setPosition(newPos);
+          if (response.success) {
+            const newPos: [number, number] = [response.lat, response.lng];
+            this.map.setView(newPos, 15);
+            this.targetMarker.setLatLng(newPos);
             this.updateTelemetryUI(response);
           }
         } catch (e) {}
@@ -303,13 +313,15 @@ export class GeoVerificationRenderer {
   }
 
   private updateTelemetryUI(response: any): void {
-    if (response.status === "success") {
+    if (response.success) {
       (window as any).lastGeoResponse = response;
       UIManager.setContent('antinna-geo-status', "Location verified.");
       UIManager.setContent('antinna-geo-clean-address', response.address);
       UIManager.setContent('antinna-geo-dist', response.distance);
       UIManager.setContent('antinna-geo-dur', response.duration);
-      UIManager.setContent('antinna-geo-tag-target', `${response.lat.toFixed(4)}, ${response.lng.toFixed(4)}`);
+      const targetLat = Number(response.lat || 0);
+      const targetLng = Number(response.lng || response.lon || 0);
+      UIManager.setContent('antinna-geo-tag-target', `${targetLat.toFixed(4)}, ${targetLng.toFixed(4)}`);
       UIManager.setContent('antinna-geo-tag-current', `${this.currentDeviceLat.toFixed(4)}, ${this.currentDeviceLng.toFixed(4)}`);
 
       UIManager.toggleClass("#antinna-geo-metrics", "hidden", false);
@@ -320,8 +332,14 @@ export class GeoVerificationRenderer {
           form.style.display = "block";
           if (response.addressDetails) {
               const d = response.addressDetails;
-              UIManager.el<HTMLInputElement>('geo-extendedAddress')!.value = d.extendedAddress || "";
-              UIManager.el<HTMLInputElement>('geo-streetAddress')!.value = d.streetAddress || "";
+              const extInput = UIManager.el<HTMLInputElement>('geo-extendedAddress')!;
+              const streetInput = UIManager.el<HTMLInputElement>('geo-streetAddress')!;
+
+              if (!this.isAddressModified) {
+                  extInput.value = d.extendedAddress || "";
+                  streetInput.value = d.streetAddress || "";
+              }
+
               UIManager.el<HTMLInputElement>('geo-locality')!.value = d.addressLocality || "";
               UIManager.el<HTMLInputElement>('geo-postalCode')!.value = d.postalCode || "";
           }

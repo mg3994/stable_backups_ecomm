@@ -5,6 +5,7 @@ import { SchemaExtractor } from '../core/SchemaExtractor';
 
 export class ProductRenderer {
   render(p: Product | ProductGroup | Service | any, state: AppState, onVariantChange: (attr: string, val: string) => void): void {
+    UIManager.injectModalStyles();
     const isBusiness = p["@type"] === "LocalBusiness" || p["@type"] === "Store" || p["@type"] === "Organization";
     const isPrimaryService = p["@type"] === "Service";
 
@@ -35,17 +36,22 @@ export class ProductRenderer {
         const offer = SchemaExtractor.getFirst(variant.offers || p.offers) as Offer;
         const priceEl = UIManager.el("p-price");
         if (priceEl && offer) {
-          const { price, currency } = SchemaExtractor.extractPrice(offer);
-          priceEl.textContent = `${currency} ${price}`;
+          const { price, currency } = SchemaExtractor.extractPriceForQuantity(offer, state.quantity);
+          const symbol = SchemaExtractor.getCurrencySymbol(currency);
+          priceEl.textContent = `${symbol}${price}`;
           const availability = SchemaExtractor.extractAvailability(offer);
           priceEl.classList.toggle("blurry", availability === "https://schema.org/OutOfStock");
         }
 
         this.renderStockBadge(offer);
+        this.renderConditionBadge(variant || p);
         this.renderAreaServed(p as Service);
 
         const imgs = Array.isArray(variant.image || p.image) ? (variant.image || p.image) : [variant.image || p.image];
         this.renderCarousel(imgs.filter(Boolean));
+
+        const modelUrl = SchemaExtractor.extract3DModel(variant) || SchemaExtractor.extract3DModel(p);
+        this.render3DButton(modelUrl);
 
         this.renderQuantityConstraints(offer);
         this.renderVariants(p, state, onVariantChange);
@@ -60,6 +66,7 @@ export class ProductRenderer {
                        SchemaExtractor.getFirst(p.seller) ||
                        (p as Service).provider;
 
+        this.renderSeller(seller);
         this.renderOtherServices(seller, variant);
     }
   }
@@ -81,6 +88,23 @@ export class ProductRenderer {
       this.renderCarousel(Array.isArray(b.image) ? b.image : [b.image]);
       this.renderSeller(b);
       this.renderOtherServices(b, b);
+  }
+
+  private renderConditionBadge(data: any): void {
+      const container = UIManager.el('stock-badge-container');
+      if (!container) return;
+
+      const condition = SchemaExtractor.extractCondition(data);
+      const existing = UIManager.el('p-condition-badge');
+      if (existing) existing.remove();
+
+      if (condition) {
+          const badge = document.createElement('span');
+          badge.id = 'p-condition-badge';
+          badge.className = `condition-badge cond-${condition.toLowerCase()}`;
+          badge.textContent = condition;
+          container.appendChild(badge);
+      }
   }
 
   private renderStockBadge(offer: Offer): void {
@@ -125,13 +149,16 @@ export class ProductRenderer {
 
   private renderQuantityConstraints(offer: Offer): void {
       const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(offer);
+      const inventoryLevel = SchemaExtractor.extractInventoryLevel(offer);
+      const effectiveMax = (maxValue !== null && inventoryLevel !== null) ? Math.min(maxValue, inventoryLevel) : (maxValue || inventoryLevel);
+
       const container = UIManager.query('.qty-controls');
       if (!container) return;
 
       const existingHint = UIManager.el('qty-constraints-hint');
       if (existingHint) existingHint.remove();
 
-      if (minValue !== null || maxValue !== null) {
+      if (minValue !== null || effectiveMax !== null) {
           const hint = document.createElement('div');
           hint.id = 'qty-constraints-hint';
           hint.style.fontSize = '0.75rem';
@@ -140,16 +167,26 @@ export class ProductRenderer {
           hint.style.fontWeight = '600';
 
           let text = '';
-          if (minValue !== null && maxValue !== null) text = `Min: ${minValue}, Max: ${maxValue}`;
+          if (minValue !== null && effectiveMax !== null) {
+              text = `Min: ${minValue}, Max: ${effectiveMax}`;
+              if (inventoryLevel !== null && inventoryLevel < (maxValue || Infinity)) {
+                  text += ' (Limited Stock)';
+              }
+          }
           else if (minValue !== null) text = `Minimum order: ${minValue}`;
-          else if (maxValue !== null) text = `Maximum order: ${maxValue}`;
+          else if (effectiveMax !== null) {
+              text = `Maximum order: ${effectiveMax}`;
+              if (inventoryLevel !== null && inventoryLevel < (maxValue || Infinity)) {
+                  text += ' (Limited Stock)';
+              }
+          }
 
           hint.textContent = text;
           container.after(hint);
       }
 
       // Update actual buttons via App state (handled in main.ts)
-      (window as any).currentQuantityLimits = { minValue, maxValue };
+      (window as any).currentQuantityLimits = { minValue, maxValue: effectiveMax };
       this.updateQtyButtons();
   }
 
@@ -186,6 +223,29 @@ export class ProductRenderer {
       }
     });
     inner.style.transform = "translateX(0)";
+  }
+
+  private render3DButton(url: string | null): void {
+      const container = UIManager.query('.carousel-container');
+      if (!container) return;
+
+      const existing = UIManager.el('view-3d-btn');
+      if (existing) existing.remove();
+
+      if (!url) return;
+
+      const btn = document.createElement('button');
+      btn.id = 'view-3d-btn';
+      btn.className = 'v-btn';
+      btn.style.cssText = `
+        margin-top: 15px; width: 100%;
+        background: rgba(0,0,0,0.8); color: #fff; border: none;
+        padding: 12px 20px; border-radius: 12px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem;
+      `;
+      btn.innerHTML = `<span>📦</span> View in 3D Preview`;
+      btn.onclick = () => UIManager.show3DViewer(url);
+      container.appendChild(btn);
   }
 
   private renderVariants(p: any, state: AppState, onVariantChange: (attr: string, val: string) => void): void {
@@ -248,7 +308,8 @@ export class ProductRenderer {
           btn.innerHTML = `${itemName}<br/><small>${itemCurrency || "INR"} ${itemPrice}</small>`;
           btn.onclick = () => {
             state.selectedPackage = off;
-            UIManager.setContent('p-price', `${SchemaExtractor.getFirst(off.priceCurrency)} ${SchemaExtractor.getFirst(off.price)}`);
+            const symbol = SchemaExtractor.getCurrencySymbol(SchemaExtractor.getFirst(off.priceCurrency));
+            UIManager.setContent('p-price', `${symbol}${SchemaExtractor.getFirst(off.price)}`);
             this.renderQuantityConstraints(off);
             document.querySelectorAll('.v-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -307,9 +368,25 @@ export class ProductRenderer {
         'Brand': getVal(variant.brand || p.brand),
         'Manufacturer': getVal(variant.manufacturer || p.manufacturer),
         'Material': getVal(variant.material || p.material),
+        'Pattern': getVal(variant.pattern || p.pattern),
         'GTIN': variant.gtin13 || variant.gtin8 || variant.gtin14 || variant.gtin || '',
         'Weight': (variant.weight || p.weight)?.value || (variant.weight || p.weight)
       };
+
+      // Audience & Age
+      const audience = SchemaExtractor.getFirst(variant.audience || p.audience);
+      if (audience) {
+          const audienceName = getVal(audience.name || audience);
+          const suggestedAge = getVal(audience.suggestedAge?.name || audience.suggestedAge?.value || audience.suggestedAge);
+          if (audienceName) flds['Audience'] = audienceName;
+          if (suggestedAge) flds['Suggested Age'] = suggestedAge;
+      }
+
+      // Certifications
+      const certs = SchemaExtractor.getArray(variant.hasCertification || p.hasCertification);
+      if (certs.length > 0) {
+          flds['Certifications'] = certs.map(c => getVal(c.name || c.certificationName || c)).join(', ');
+      }
 
       let h = '';
       for (let [l, k] of Object.entries(flds)) {
@@ -348,8 +425,35 @@ export class ProductRenderer {
       return;
     }
     box.style.display = "block";
+
+    const { isOpen, message } = SchemaExtractor.isBusinessOpen(s);
+    const statusHtml = isOpen
+        ? `<span class="stock-badge in-stock" style="margin:0 0 10px 0;">Open Now</span>`
+        : `<span class="stock-badge out-stock" style="margin:0 0 10px 0;">${message || 'Currently Closed'}</span>`;
+
+    // Disable add to cart if closed
+    const addBtn = UIManager.el<HTMLButtonElement>("add-to-cart-btn");
+    if (addBtn && !isOpen) {
+        addBtn.disabled = true;
+        addBtn.textContent = message || "Seller Currently Closed";
+    }
+
+    const alternateName = SchemaExtractor.getFirst(s.alternateName);
+    const name = SchemaExtractor.getFirst(s.name) || "Antinna";
+    const displayName = alternateName ? `${name} (${alternateName})` : name;
+
     const address = SchemaExtractor.getFirst(s.address);
-    inf.innerHTML = `<strong>${SchemaExtractor.getFirst(s.name) || "Antinna"}</strong><br/>${SchemaExtractor.getFirst(s.telephone) ? `&#128222; ${SchemaExtractor.getFirst(s.telephone)}<br/>` : ""}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}`;
+
+    // Amenities
+    const amenities = SchemaExtractor.getArray(s.amenityFeature);
+    const amenitiesHtml = amenities.length > 0
+        ? `<div style="margin-top:10px; display:flex; gap:5px; flex-wrap:wrap;">${amenities.map(a => `<span style="font-size:0.7rem; background:rgba(0,0,0,0.05); padding:2px 8px; border-radius:4px;">${SchemaExtractor.getFirst(a.name)}</span>`).join('')}</div>`
+        : '';
+
+    const phone = SchemaExtractor.getFirst(s.telephone);
+    const phoneHtml = phone ? `&#128222; <a href="tel:${phone}" style="color:inherit; text-decoration:none;">${phone}</a><br/>` : "";
+
+    inf.innerHTML = `${statusHtml}<br/><strong>${displayName}</strong><br/>${phoneHtml}${SchemaExtractor.getFirst(s.email) ? `&#128231; <a href="mailto:${SchemaExtractor.getFirst(s.email)}">${SchemaExtractor.getFirst(s.email)}</a><br/>` : ""}${address ? `📍 ${SchemaExtractor.getFirst(address.streetAddress) || ""}, ${SchemaExtractor.getFirst(address.addressLocality) || ""}` : ""}${amenitiesHtml}`;
     if (maps) {
       const geo = SchemaExtractor.getFirst(s.geo);
       if (SchemaExtractor.getFirst(s.hasMap) || geo) {
@@ -367,73 +471,90 @@ export class ProductRenderer {
     const titleEl = otherSec?.querySelector('.section-title');
     if (!otherSec || !otherList) return;
 
-    if (!s) {
-        return;
-    }
+    if (!s) return;
 
-    const svcs = SchemaExtractor.findAllServices(s);
+    // Find standalone services (hasOfferCatalog)
+    const catalog = SchemaExtractor.getArray(s.hasOfferCatalog || p.hasOfferCatalog);
+    const services: any[] = [];
+    catalog.forEach(cat => {
+        services.push(...SchemaExtractor.getArray(cat.itemListElement));
+    });
 
-    // Fallback: search in p as well
-    if (p !== s) {
-        const pSvcs = SchemaExtractor.findAllServices(p);
-        pSvcs.forEach(ps => {
-            if (!svcs.find(s => (s.itemOffered?.name || s.name) === (ps.itemOffered?.name || ps.name))) {
-                svcs.push(ps);
-            }
-        });
-    }
+    // Find addons (addOn)
+    const addOns = SchemaExtractor.getArray(p.addOn || s.addOn);
 
-    if (svcs.length > 0) {
+    this.renderAddOns(addOns, s, p);
+
+    if (services.length > 0) {
       otherSec.style.display = "block";
-
       if (titleEl) {
           const isBusiness = p["@type"] === "LocalBusiness" || p["@type"] === "Store" || p["@type"] === "Organization";
           titleEl.textContent = isBusiness ? "Deals In / Our Services" : "Optional Product-Related Services";
       }
 
-      otherList.innerHTML = svcs.map((ser: any) => {
+      otherList.innerHTML = services.map((ser: any) => {
         const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
         const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
         const { price, currency } = SchemaExtractor.extractPrice(ser);
         const url = SchemaExtractor.getFirst(p.url) || window.location.href.split('?')[0].split('#')[0];
         const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
-        const bookingReq = SchemaExtractor.extractAdvanceBookingRequirement(ser);
-
-        const itemWithUrl = {
-            ...rawItem,
-            name: n,
-            "@type": rawItem["@type"] || ser["@type"] || "Service",
-            url,
-            offers: {
-                "@type": "Offer",
-                price,
-                priceCurrency: currency,
-                availability: SchemaExtractor.extractAvailability(ser),
-                eligibleQuantity: {
-                    "@type": "QuantitativeValue",
-                    minValue,
-                    maxValue
-                }
-            }
-        };
-
-        let constraintText = '';
-        if (minValue !== null || maxValue !== null) {
-            if (minValue !== null && maxValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Min: ${minValue}, Max: ${maxValue}</div>`;
-            else if (minValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Min: ${minValue}</div>`;
-            else if (maxValue !== null) constraintText = `<div style="font-size:0.7rem; color:#777; margin-bottom:4px;">Max: ${maxValue}</div>`;
-        }
-
-        const bookingText = bookingReq ? `<div style="font-size:0.7rem; color:var(--accent); font-weight:700; margin-bottom:8px;">Booking: ${bookingReq}</div>` : '';
-
+        const inventoryLevel = SchemaExtractor.extractInventoryLevel(ser.offers || ser);
+        const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", url, offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
         const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
         const sellerJson = JSON.stringify(s).replace(/"/g, '&quot;');
-        let btnH = `<button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button>`;
-
-        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? currency + ' ' + price : 'Free/Included'}</div>${constraintText}${bookingText}${btnH}</div>`;
+        const symbol = SchemaExtractor.getCurrencySymbol(currency);
+        return `<div class="h-card"><div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div><div class="price" style="font-size:1.2rem;margin-bottom:15px;">${price !== "0" ? symbol + price : 'Free/Included'}</div><button class="v-btn" style="width:100%;padding:10px;font-size:0.85rem;" onclick="CartManager.addItem(${itemJson}, ${sellerJson}); CartRenderer.updateUI(); showToast('Service Added', 'success');">Add Service</button></div>`;
       }).join('');
     } else {
       otherSec.style.display = "none";
     }
+  }
+
+  private renderAddOns(addOns: any[], s: Organization | any, p: any): void {
+      let addonSec = UIManager.el("addon-services");
+      if (!addonSec) {
+          addonSec = document.createElement('div');
+          addonSec.id = "addon-services";
+          addonSec.className = "details-card";
+          addonSec.style.marginTop = "20px";
+          addonSec.innerHTML = `<h2 class="section-title">Addons</h2><div id="addon-services-list" class="h-list"></div>`;
+          UIManager.el("other-services")?.before(addonSec);
+      }
+
+      const list = UIManager.el("addon-services-list");
+      if (!list) return;
+
+      if (addOns.length === 0) {
+          addonSec.style.display = "none";
+          return;
+      }
+
+      addonSec.style.display = "block";
+      const cartManager = (window as any).CartManager;
+      const currentUrl = window.location.href.split('?')[0].split('#')[0];
+      const parentKey = cartManager.generateItemKey({ ...p, url: currentUrl }, (window as any).AntinnaEngine.state.selectedVariants);
+      const isParentInCart = cartManager.getOrder().orderedItem.some((oi: any) => oi.itemKey === parentKey);
+
+      list.innerHTML = addOns.map((ser: any) => {
+          const rawItem = SchemaExtractor.getFirst(ser.itemOffered) || ser;
+          const n = SchemaExtractor.getFirst(rawItem.name) || SchemaExtractor.getFirst(ser.name);
+          const { price, currency } = SchemaExtractor.extractPrice(ser);
+          const symbol = SchemaExtractor.getCurrencySymbol(currency);
+          const { minValue, maxValue } = SchemaExtractor.extractEligibleQuantity(ser);
+          const inventoryLevel = SchemaExtractor.extractInventoryLevel(ser.offers || ser);
+          const itemWithUrl = { ...rawItem, name: n, "@type": rawItem["@type"] || ser["@type"] || "Service", offers: { "@type": "Offer", price, priceCurrency: currency, availability: SchemaExtractor.extractAvailability(ser), eligibleQuantity: (minValue !== null || maxValue !== null) ? { "@type": "QuantitativeValue", minValue, maxValue } : undefined, inventoryLevel: (inventoryLevel !== null) ? { "@type": "QuantitativeValue", value: inventoryLevel } : undefined } };
+          const itemJson = JSON.stringify(itemWithUrl).replace(/"/g, '&quot;');
+
+          return `
+            <div class="h-card" style="opacity: ${isParentInCart ? '1' : '0.5'}">
+                <div style="font-weight:700;margin-bottom:10px;height:3em;overflow:hidden;">${n}</div>
+                <div class="price" style="font-size:1.2rem;margin-bottom:15px;">${symbol}${price}</div>
+                <button class="v-btn ${isParentInCart ? 'active' : ''}" style="width:100%;padding:10px;font-size:0.85rem;"
+                    ${isParentInCart ? '' : 'disabled'}
+                    onclick="CartManager.addAddOn('${parentKey}', ${itemJson}); CartRenderer.updateUI(); showToast('Addon Added', 'success');">
+                    ${isParentInCart ? 'Add Addon' : 'Add Base Product First'}
+                </button>
+            </div>`;
+      }).join('');
   }
 }
