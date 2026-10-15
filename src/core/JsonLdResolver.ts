@@ -52,12 +52,13 @@ export class JsonLdResolver {
   }
 
   /**
-   * Builds context object with @vocab and @base directly under context map
+   * Builds context map object registering @vocab, schema prefix, and @base directly
    */
   public createDocumentContext(scope: BloggerIdentityScope): Record<string, string> {
     const baseIri = this.baseIriBuilder(scope);
     return {
       "@vocab": "http://schema.org/",
+      "schema": "http://schema.org/",
       "@base": baseIri
     };
   }

@@ -21,15 +21,15 @@ describe('SchemaExtractor', () => {
   });
 
   describe('Value Metadata & Language Maps', () => {
-    it('should extract JSON-LD Value Object metadata', () => {
-      const valObj = { "@value": "Apple", "@language": "en", "@direction": "ltr", "@type": "xsd:string" };
+    it('should extract JSON-LD Value Object metadata with schema: type prefix', () => {
+      const valObj = { "@value": "Apple", "@language": "en", "@direction": "ltr", "@type": "schema:Text" };
       const extracted = SchemaExtractor.extractValueObject(valObj);
 
       expect(extracted).toEqual({
         "@value": "Apple",
         "@language": "en",
         "@direction": "ltr",
-        "@type": "xsd:string",
+        "@type": "schema:Text",
         "@index": undefined
       });
     });
@@ -76,7 +76,7 @@ describe('SchemaExtractor', () => {
 
     it('should hydrate document graph using SchemaExtractor.hydrate', async () => {
       const doc = {
-        "@context": { "@vocab": "https://schema.org/", "@base": "https://www.blogger.com/b/b1/p/p1" },
+        "@context": { "@vocab": "http://schema.org/", "schema": "http://schema.org/", "@base": "https://www.blogger.com/b/b1/p/p1" },
         "@graph": [
           { "@type": "Offer", "@id": "#offer1", "itemOffered": { "@id": "#item1" } },
           { "@type": "IndividualProduct", "@id": "#item1", "name": "Handmade Craft" }

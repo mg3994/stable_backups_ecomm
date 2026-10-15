@@ -7,6 +7,7 @@ describe("JsonLdResolver", () => {
   it("should extract @base from context map object", () => {
     const contextObject = {
       "@vocab": "http://schema.org/",
+      "schema": "http://schema.org/",
       "@base": "https://www.blogger.com/b/blog-123/p/post-456"
     };
     expect(resolver.extractBaseFromContext(contextObject)).toBe("https://www.blogger.com/b/blog-123/p/post-456");
@@ -46,10 +47,11 @@ describe("JsonLdResolver", () => {
     expect(ref.canonicalIri).toBe("https://www.blogger.com/b/other-blog-999#organization");
   });
 
-  it("should generate context map object with @vocab and dynamic @base", () => {
+  it("should generate context map object with @vocab, schema prefix, and dynamic @base", () => {
     const context = resolver.createDocumentContext({ blogId: "blog-123", postId: "post-456" });
     expect(context).toEqual({
       "@vocab": "http://schema.org/",
+      "schema": "http://schema.org/",
       "@base": "https://www.blogger.com/b/blog-123/p/post-456"
     });
   });
