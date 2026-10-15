@@ -102,7 +102,7 @@ export class HydrationEngine {
       // If reference requires cross-document resolution (has blogId or external URL)
       if (!ref.isLocal && (ref.blogId || ref.canonicalIri.startsWith("http")) && this.fetcher) {
         try {
-          const targetBlogId = ref.blogId || "";
+          const targetBlogId = ref.blogId || ref.canonicalIri;
           const targetPostId = ref.postId;
 
           const externalDoc = await this.fetcher(targetBlogId, targetPostId);

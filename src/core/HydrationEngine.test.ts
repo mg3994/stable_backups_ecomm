@@ -5,7 +5,7 @@ describe("HydrationEngine", () => {
   it("should hydrate local references within @graph", async () => {
     const engine = new HydrationEngine();
     const doc = {
-      "@context": ["https://schema.org", { "@base": "https://www.blogger.com/b/blog-123/p/post-456" }],
+      "@context": { "@vocab": "http://schema.org/", "@base": "https://www.blogger.com/b/blog-123/p/post-456" },
       "@graph": [
         {
           "@type": "BlogPosting",
@@ -32,7 +32,7 @@ describe("HydrationEngine", () => {
     const mockFetcher = vi.fn(async (blogId: string, postId?: string) => {
       if (blogId === "other-blog" && postId === "other-post") {
         return {
-          "@context": ["https://schema.org", { "@base": "https://www.blogger.com/b/other-blog/p/other-post" }],
+          "@context": { "@vocab": "http://schema.org/", "@base": "https://www.blogger.com/b/other-blog/p/other-post" },
           "@graph": [
             {
               "@type": "Organization",

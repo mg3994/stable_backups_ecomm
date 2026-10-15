@@ -76,7 +76,7 @@ describe('SchemaExtractor', () => {
 
     it('should hydrate document graph using SchemaExtractor.hydrate', async () => {
       const doc = {
-        "@context": ["https://schema.org", { "@base": "https://www.blogger.com/b/b1/p/p1" }],
+        "@context": { "@vocab": "https://schema.org/", "@base": "https://www.blogger.com/b/b1/p/p1" },
         "@graph": [
           { "@type": "Offer", "@id": "#offer1", "itemOffered": { "@id": "#item1" } },
           { "@type": "IndividualProduct", "@id": "#item1", "name": "Handmade Craft" }

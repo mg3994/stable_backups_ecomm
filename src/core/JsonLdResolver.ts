@@ -29,31 +29,37 @@ export class JsonLdResolver {
   }
 
   /**
-   * Extracts @base IRI from a JSON-LD @context declaration
+   * Extracts @base IRI directly from a JSON-LD @context map object
    */
   public extractBaseFromContext(context: JsonLdContext): string | null {
     if (!context) return null;
 
-    const items = Array.isArray(context) ? context : [context];
-    for (const item of items) {
-      if (typeof item === 'object' && item !== null) {
-        if ('@base' in item && typeof item['@base'] === 'string') {
+    if (typeof context === 'object' && context !== null && !Array.isArray(context)) {
+      if ('@base' in context && typeof (context as any)['@base'] === 'string') {
+        return (context as any)['@base'];
+      }
+    }
+
+    if (Array.isArray(context)) {
+      for (const item of context) {
+        if (typeof item === 'object' && item !== null && '@base' in item && typeof item['@base'] === 'string') {
           return item['@base'];
         }
       }
     }
+
     return null;
   }
 
   /**
-   * Builds standard JSON-LD 1.1 dual context array with Schema.org remote context and inline @base
+   * Builds context object with @vocab and @base directly under context map
    */
-  public createDocumentContext(scope: BloggerIdentityScope): [string, { "@base": string }] {
+  public createDocumentContext(scope: BloggerIdentityScope): Record<string, string> {
     const baseIri = this.baseIriBuilder(scope);
-    return [
-      "https://schema.org",
-      { "@base": baseIri }
-    ];
+    return {
+      "@vocab": "http://schema.org/",
+      "@base": baseIri
+    };
   }
 
   /**
@@ -116,7 +122,7 @@ export class JsonLdResolver {
       return {
         rawId,
         canonicalIri,
-        isLocal: Boolean(isSameAsCurrent && !fragmentPart.startsWith("other")),
+        isLocal: Boolean(isSameAsCurrent),
         blogId,
         postId,
         fragment: fragmentPart || undefined
