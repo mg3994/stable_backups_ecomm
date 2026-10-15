@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SchemaExtractor } from '../core/SchemaExtractor';
 
 describe('SchemaExtractor', () => {
@@ -18,6 +18,76 @@ describe('SchemaExtractor', () => {
     const raw = '{"name": "Price &amp; Quality"}';
     const result = SchemaExtractor.extractJsonLd<any>(raw);
     expect(result?.name).toBe('Price & Quality');
+  });
+
+  describe('Value Metadata & Language Maps', () => {
+    it('should extract JSON-LD Value Object metadata', () => {
+      const valObj = { "@value": "Apple", "@language": "en", "@direction": "ltr", "@type": "xsd:string" };
+      const extracted = SchemaExtractor.extractValueObject(valObj);
+
+      expect(extracted).toEqual({
+        "@value": "Apple",
+        "@language": "en",
+        "@direction": "ltr",
+        "@type": "xsd:string",
+        "@index": undefined
+      });
+    });
+
+    it('should resolve localized values based on preferred language', () => {
+      const langMap = { "en": "Product", "fr": "Produit", "hi": "उत्पाद" };
+      expect(SchemaExtractor.getLocalizedValue(langMap, "fr")).toBe("Produit");
+      expect(SchemaExtractor.getLocalizedValue(langMap, "hi")).toBe("उत्पाद");
+      expect(SchemaExtractor.getLocalizedValue(langMap, "es", "en")).toBe("Product");
+
+      const valObjects = [
+        { "@value": "Hello", "@language": "en" },
+        { "@value": "Bonjour", "@language": "fr" }
+      ];
+      expect(SchemaExtractor.getLocalizedValue(valObjects, "fr")).toBe("Bonjour");
+      expect(SchemaExtractor.getLocalizedValue(valObjects, "en")).toBe("Hello");
+    });
+
+    it('should extract LanguageMap from value array', () => {
+      const valObjects = [
+        { "@value": "Book", "@language": "en" },
+        { "@value": "Livre", "@language": "fr" }
+      ];
+      const langMap = SchemaExtractor.extractLanguageMap(valObjects);
+      expect(langMap).toEqual({
+        "en": "Book",
+        "fr": "Livre"
+      });
+    });
+  });
+
+  describe('Entity Lookup and Hydration', () => {
+    it('should extract entity by ID from @graph', () => {
+      const doc = {
+        "@graph": [
+          { "@type": "Product", "@id": "#prod1", "name": "Laptop" },
+          { "@type": "Person", "@id": "#seller", "name": "Bob" }
+        ]
+      };
+
+      const entity = SchemaExtractor.extractEntityById<any>(doc, "#seller", { blogId: "b1", postId: "p1" });
+      expect(entity?.name).toBe("Bob");
+    });
+
+    it('should hydrate document graph using SchemaExtractor.hydrate', async () => {
+      const doc = {
+        "@context": ["https://schema.org", { "@base": "https://www.blogger.com/b/b1/p/p1" }],
+        "@graph": [
+          { "@type": "Offer", "@id": "#offer1", "itemOffered": { "@id": "#item1" } },
+          { "@type": "IndividualProduct", "@id": "#item1", "name": "Handmade Craft" }
+        ]
+      };
+
+      const hydrated = await SchemaExtractor.hydrate<any>(doc, { scope: { blogId: "b1", postId: "p1" } });
+      const offer = hydrated["@graph"][0];
+
+      expect(offer.itemOffered.name).toBe("Handmade Craft");
+    });
   });
 
   describe('priceSpecification', () => {
