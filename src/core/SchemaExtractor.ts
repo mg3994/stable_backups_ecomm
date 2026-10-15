@@ -1,3 +1,7 @@
+import { BloggerIdentityScope, JsonLdLanguageMap, JsonLdValueObject } from "../types/schema";
+import { HydrationEngine, HydrationOptions } from "./HydrationEngine";
+import { JsonLdResolver } from "./JsonLdResolver";
+
 export class SchemaExtractor {
   static getFirst<T>(val: T | T[] | undefined): T | undefined {
     if (Array.isArray(val)) return val[0];
@@ -8,6 +12,153 @@ export class SchemaExtractor {
     if (val === undefined || val === null) return [];
     if (Array.isArray(val)) return val;
     return [val];
+  }
+
+  /**
+   * Extracts JSON-LD 1.1 Value Object (@value, @language, @direction, @type)
+   */
+  static extractValueObject(val: any): JsonLdValueObject<string> | null {
+    if (val === undefined || val === null) return null;
+
+    const obj = this.getFirst(val);
+    if (typeof obj === "object" && obj !== null && "@value" in obj) {
+      return {
+        "@value": String(obj["@value"]),
+        "@language": obj["@language"],
+        "@direction": obj["@direction"],
+        "@type": obj["@type"],
+        "@index": obj["@index"]
+      };
+    }
+
+    if (typeof obj === "string" || typeof obj === "number" || typeof obj === "boolean") {
+      return { "@value": String(obj) };
+    }
+
+    return null;
+  }
+
+  /**
+   * Resolves a string value from raw string, JSON-LD Value Object, Language Map, or array, based on language preference.
+   */
+  static getLocalizedValue(val: any, preferredLanguage = "en", defaultLanguage = "en"): string {
+    if (val === undefined || val === null) return "";
+
+    // If primitive
+    if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+      return String(val);
+    }
+
+    // If Array, search for preferred language or first valid
+    if (Array.isArray(val)) {
+      const match = val.find(item => {
+        if (typeof item === "object" && item !== null && item["@language"]) {
+          return String(item["@language"]).toLowerCase() === preferredLanguage.toLowerCase();
+        }
+        return false;
+      });
+      if (match) return this.getLocalizedValue(match, preferredLanguage, defaultLanguage);
+
+      const defaultMatch = val.find(item => {
+        if (typeof item === "object" && item !== null && item["@language"]) {
+          return String(item["@language"]).toLowerCase() === defaultLanguage.toLowerCase();
+        }
+        return false;
+      });
+      if (defaultMatch) return this.getLocalizedValue(defaultMatch, preferredLanguage, defaultLanguage);
+
+      return this.getLocalizedValue(val[0], preferredLanguage, defaultLanguage);
+    }
+
+    // If JSON-LD Value Object (@value)
+    if (typeof val === "object" && val !== null && "@value" in val) {
+      return String(val["@value"]);
+    }
+
+    // If Language Map (e.g., { "en": "Hello", "fr": "Bonjour" })
+    if (typeof val === "object" && val !== null) {
+      const prefKey = Object.keys(val).find(k => k.toLowerCase() === preferredLanguage.toLowerCase());
+      if (prefKey && val[prefKey]) {
+        return Array.isArray(val[prefKey]) ? String(val[prefKey][0]) : String(val[prefKey]);
+      }
+
+      const defaultKey = Object.keys(val).find(k => k.toLowerCase() === defaultLanguage.toLowerCase());
+      if (defaultKey && val[defaultKey]) {
+        return Array.isArray(val[defaultKey]) ? String(val[defaultKey][0]) : String(val[defaultKey]);
+      }
+
+      const firstKey = Object.keys(val)[0];
+      if (firstKey && val[firstKey]) {
+        return Array.isArray(val[firstKey]) ? String(val[firstKey][0]) : String(val[firstKey]);
+      }
+    }
+
+    return "";
+  }
+
+  /**
+   * Extracts or constructs a JSON-LD LanguageMap from a property value
+   */
+  static extractLanguageMap(val: any): JsonLdLanguageMap | null {
+    if (!val || typeof val !== "object") return null;
+
+    if (!Array.isArray(val) && !("@value" in val) && !("@id" in val) && !("@type" in val)) {
+      // Direct Language Map object (e.g. { "en": "Hello", "fr": "Bonjour" })
+      return val as JsonLdLanguageMap;
+    }
+
+    const items = this.getArray(val);
+    const map: JsonLdLanguageMap = {};
+
+    for (const item of items) {
+      if (typeof item === "object" && item !== null && "@value" in item && item["@language"]) {
+        const lang = item["@language"];
+        const strVal = String(item["@value"]);
+        if (map[lang]) {
+          const existing = Array.isArray(map[lang]) ? map[lang] as string[] : [map[lang] as string];
+          map[lang] = [...existing, strVal];
+        } else {
+          map[lang] = strVal;
+        }
+      }
+    }
+
+    return Object.keys(map).length > 0 ? map : null;
+  }
+
+  /**
+   * Finds an entity in a JSON-LD document or @graph matching an ID / canonical IRI / relative fragment
+   */
+  static extractEntityById<T = any>(doc: any, id: string, scope?: BloggerIdentityScope): T | null {
+    if (!doc || !id) return null;
+
+    const resolver = new JsonLdResolver();
+    const ref = resolver.resolveEntityReference(id, scope);
+
+    const items = doc["@graph"] ? this.getArray(doc["@graph"]) : (Array.isArray(doc) ? doc : [doc]);
+
+    for (const item of items) {
+      if (item && typeof item === "object" && item["@id"]) {
+        const itemRef = resolver.resolveEntityReference(item["@id"], scope);
+        if (
+          item["@id"] === id ||
+          itemRef.canonicalIri === ref.canonicalIri ||
+          (ref.fragment && itemRef.fragment === ref.fragment)
+        ) {
+          return item as T;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Recursively hydrates an entity or document using HydrationEngine
+   */
+  static async hydrate<T = any>(doc: any, options?: HydrationOptions & { scope?: BloggerIdentityScope }): Promise<T> {
+    const engine = new HydrationEngine(options);
+    return await engine.hydrateEntity(doc, options?.scope);
   }
 
   static decodeEntities(text: string): string {
